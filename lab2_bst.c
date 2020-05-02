@@ -200,7 +200,15 @@ int lab2_node_remove_cg(lab2_tree* tree, int key) {
  *  @return                 : status(success or fail)
  */
 void lab2_tree_delete(lab2_tree* tree) {
-    // You need to implement lab2_tree_delete function.
+    lab2_tree* subtree;
+    if (tree->root!=NULL) {
+        subtree->root = tree->root->left;
+        lab2_tree_delete(subtree);
+        subtree->root = tree->root->right;
+        lab2_tree_deletet(tree->root->right);
+        free(subtree->root);
+    }
+    
 
 }
 
@@ -215,7 +223,7 @@ void lab2_tree_delete(lab2_tree* tree) {
 void lab2_node_delete(lab2_node* node) {
     lab2_node* deletenode;
     lab2_node* p_replacing, * replacing;
-
+    lab2_node* tmp;
     // Has only rightside subtree.
     if (node->right != NULL && node->left == NULL) {
         p_replacing = node;
@@ -224,8 +232,6 @@ void lab2_node_delete(lab2_node* node) {
             p_replacing = replacing;
             replacing = p_replacing->left;
         }
-        p_replacing = NULL;
-        node = replacing;
     }
     // Has left subtree.
     else {
@@ -235,7 +241,8 @@ void lab2_node_delete(lab2_node* node) {
             p_replacing = replacing;
             replacing = p_replacing->right;
         }
-        p_replacing = NULL;
-        node = replacing;
     }
+    p_replacing = NULL;
+    free(node);
+    node = replacing;
 }
