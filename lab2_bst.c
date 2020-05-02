@@ -31,14 +31,8 @@ int lab2_node_print_inorder(lab2_tree *tree) {
 }
 
 /*
- * TODO
- *  Implement function which creates struct lab2_tree
- *  ( refer to the ./include/lab2_sync_types.h for structure lab2_tree )
- * 
- *  @return                 : bst which you created in this function.
- */
-/*
 * Create empty Binary Search Tree.
+* Return the created Binary Search Tree.
 */
 lab2_tree* lab2_tree_create() {
     lab2_tree* tree = (lab2_tree*)malloc(sizeof(lab2_tree));
@@ -46,16 +40,10 @@ lab2_tree* lab2_tree_create() {
     return tree;
 }
 
-/*
- * TODO
- *  Implement function which creates struct lab2_node
- *  ( refer to the ./include/lab2_sync_types.h for structure lab2_node )
- *
- *  @param int key          : bst node's key to creates
- *  @return                 : bst node which you created in this function.
- */
+
 /*
 * Create a new node and set a key value as given argument.
+* Return the created BST node.
 */
 lab2_node* lab2_node_create(int key) {
     lab2_node* node = (lab2_node*)malloc(sizeof(lab2_node));
@@ -65,17 +53,46 @@ lab2_node* lab2_node_create(int key) {
     return node;
 }
 
-/* 
- * TODO
- *  Implement a function which insert nodes from the BST. 
- *  
- *  @param lab2_tree *tree      : bst which you need to insert new node.
- *  @param lab2_node *new_node  : bst node which you need to insert. 
- *  @return                 : satus (success or fail)
- */
-int lab2_node_insert(lab2_tree *tree, lab2_node *new_node){
-    // You need to implement lab2_node_insert function.
+/*
+* Insert a node to a Binary Search Tree.
+* If it succeeds to insert a node, it returns 0.
+* If it fails to insert a node, it returns -1.
+*/
+int lab2_node_insert(lab2_tree* tree, lab2_node* new_node) {
+    lab2_node* now = tree->root;
+    
+    // If the tree is empty, new_node becomes root of the tree.
+    if (now == NULL) {
+        tree->root = new_node;
+        return 0;
+    }
+    while (1) {     
+        // It isn't possible to insert node that has duplicate key value.
+        if (new_node->key == now->key) {
+            printf("Duplicate key value...\n");
+            return -1;
+        }
 
+        if (new_node->key < now->key) {
+            if (now->left) {
+                now = now->left;
+            }
+            else {
+                now->left = new_node;
+                break;
+            }
+        }
+        else {
+            if (now->right) {
+                now = now->right;
+            }
+            else {
+                now->right = new_node;
+                break;
+            }
+        }
+    }
+    return 0;
 }
 
 /* 
