@@ -27,14 +27,22 @@
  *  @return                 : status (success or fail)
  */
 int lab2_node_print_inorder(lab2_tree* tree) {
-    // You need to implement lab2_node_print_inorder function.
-    lab2_tree* subtree;
+    // You need to implement lab2_node_print_inorder function.  
     if (tree->root != NULL) {
-        subtree->root = tree->root->left;
-        lab2_node_print_inorder(subtree);
-        printf("The key is %d\n", subtree->root->key);
-        subtree->root = tree->root->right;
-        lab2_node_print_inorder(subtree);
+        lab2_tree* subtree = (lab2_tree*)malloc(sizeof(lab2_tree));
+        *subtree = *tree;
+        if (subtree->root->left != NULL) {
+            subtree->root = tree->root->left;
+            lab2_node_print_inorder(subtree);
+        }
+        printf("The key is %d\n", tree->root->key);
+        *subtree = *tree;
+        if (subtree->root->right != NULL) {
+            subtree->root = tree->root->right;
+            lab2_node_print_inorder(subtree);
+        }
+        free(subtree);
+        return 0;
     }
     else
         return 1;
