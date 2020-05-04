@@ -347,4 +347,5 @@ int mutex_test(int num_threads, int num_iterations, int is_sync) {
     print_result(num_threads, num_iterations, is_sync);
 
     return 0; // 리턴 굳이 필요한가...싶다...
+
 }
