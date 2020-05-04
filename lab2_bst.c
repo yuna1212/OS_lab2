@@ -228,29 +228,152 @@ void lab2_tree_delete(lab2_tree* tree) {
  *  @param lab2_tree *tree  : bst node which you want to remove.
  *  @return                 : status(success or fail)
  */
-void lab2_node_delete(lab2_node* node) {
-    lab2_node* deletenode;
-    lab2_node* p_replacing, * replacing;
-    lab2_node* tmp;
-    // Has only rightside subtree.
-    if (node->right != NULL && node->left == NULL) {
-        p_replacing = node;
-        replacing = p_replacing->right;
-        while (replacing->left != NULL) {
-            p_replacing = replacing;
-            replacing = p_replacing->left;
+void lab2_node_delete(lab2_tree* tree, lab2_node* node) {
+    
+    if (node == NULL) {
+        printf("[Error]Impossible to delete NULL from tree..\n");
+        return;
+    }
+    typedef enum side_is {
+        UNKNOWN,
+        LEFT,
+        RIGHT
+    } side_is; // 어떤 노드가 부모의 오른쪽인지, 왼쪽인지 정하기
+    
+    lab2_node* parent_node;
+    lab2_node* now_node;
+    side_is nodeSide_is = UNKNOWN;
+    
+    // 노드 위치 찾기
+    parent_node = NULL;
+    now_node = tree->root;
+    while (node != now_node) {
+        // 만약 지금 있는 노드가 NULL이라면 찾는 값이 없는 것이다.
+        if (now_node == NULL) {
+            printf("[Error]No node to delete..Nothing matches the node put by parameter.\n");
+            return;
+        }
+        // 찾는 값이 더 크다면 오른쪽으로 이동
+        if (node->key > now_node->key) {
+            parent_node = now_node;
+            now_node = parent_node->right;
+            nodeSide_is = RIGHT;
+        }
+        // 찾는 값이 더 작다면 왼쪽으로 이동
+        else if (node->key < now_node->key) {
+            parent_node = now_node;
+            now_node = parent_node->left;
+            nodeSide_is = LEFT;
         }
     }
-    // Has left subtree.
-    else {
-        p_replacing = node;
-        replacing = p_replacing->left;
-        while (replacing->right != NULL) {
-            p_replacing = replacing;
-            replacing = p_replacing->right;
+
+    // nodeSide_is가 UNKNOWN이라는 것은 찾는 노드가 트리의 루트라는 것 의미. 가장 꼭대기 노드 삭제하고싶음!!
+    
+    // now는 자식이 없다..
+    if (node->left == NULL && node->right == NULL) {
+        switch (nodeSide_is) {
+        case LEFT:
+            parent_node->left = NULL;
+            break;
+        case RIGHT:
+            parent_node->right = NULL;
+            break;
+        case UNKNOWN:
+            tree->root = NULL;
+            break;
         }
     }
-    p_replacing = NULL;
-    free(node);
-    node = replacing;
+    
+    // now는 자식이 하나 있다.
+    else if (node->left == NULL || node->right == NULL) {
+        switch (nodeSide_is) {
+        case LEFT:
+            // now의 왼쪽 자식이 있는것이다
+            if (node->left != NULL) {
+                parent_node->left = now_node->left;
+            }
+            // now의 오른쪽 자식이 있는것이다
+            else if (node->right != NULL) {
+                parent_node->left = now_node->right;
+            }
+            break;
+        
+        case RIGHT:
+            // now의 왼쪽 자식이 있는것이다
+            if (node->left != NULL) {
+                parent_node->right = now_node->left;
+            }
+            // now의 오른쪽 자식이 있는것이다
+            else if (node->right != NULL) {
+                parent_node->right = now_node->right;
+            }
+            break;
+
+        case UNKNOWN:
+            // tree의 루트를 삭제해야하므로 tree->root를 다음 노드로 가리키게 해야함.
+             // now의 왼쪽 자식이 있는것이다
+            if (node->left != NULL) {
+                tree->root = now_node->left;
+            }
+            // now의 오른쪽 자식이 있는것이다
+            else if (node->right != NULL) {
+                tree->root = now_node->right;
+            }
+            break;
+        }
+        
+    }
+
+    // now는 자식이 둘 다 있다
+    else if (node->left != NULL && node->right != NULL) {
+        lab2_node* rightTerminal_node; // now의 왼쪽의 가장 오른쪽 노드
+        lab2_node* parent_terminal = NULL; // rightTerminal_node의 부모.
+
+        // now의 왼쪽자식의 가장 오른쪽 노드 탐색
+        rightTerminal_node = now_node->left;
+        while (rightTerminal_node->right != NULL) {
+            parent_terminal = rightTerminal_node;
+            rightTerminal_node = parent_terminal->right;
+        }
+
+        // 이부분이 좀 헷갈리긴 해..
+        switch (nodeSide_is) {
+        case LEFT:
+            if (parent_terminal != NULL)
+                parent_terminal->right = NULL;
+            else
+                now_node->left = NULL;
+
+            parent_node->left = rightTerminal_node;
+            rightTerminal_node->right = now_node->right;
+            rightTerminal_node->left = now_node->left;
+            break;
+
+        case RIGHT:
+            if (parent_terminal != NULL)
+                parent_terminal->right = NULL;
+            else
+                now_node->left = NULL;
+
+            parent_node->right = rightTerminal_node;
+            rightTerminal_node->right = now_node->right;
+            rightTerminal_node->left = now_node->left;
+            break;
+
+        case UNKNOWN:
+            if (parent_terminal != NULL)
+                parent_terminal->right = NULL;
+            else
+                now_node->left = NULL;
+            tree->root = rightTerminal_node;
+            rightTerminal_node->right = now_node->right;
+            rightTerminal_node->left = now_node->left;
+            break;
+        }
+    }
+
+    // nownode를 해제하고 비워주기!
+    free(now_node);
+    now_node = NULL;
+
 }
