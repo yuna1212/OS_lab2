@@ -152,7 +152,8 @@ int lab2_node_remove(lab2_tree* tree, int key) {
     while (1) {
         // This node deletes itself.
         if (nownode->key == key) {
-            lab2_node_delete(nownode);
+            lab2_node_delete(tree,nownode);
+            return 0;
         }
 
         // Didn't find the node to delete yet.
@@ -168,7 +169,8 @@ int lab2_node_remove(lab2_tree* tree, int key) {
 
         // Anything matches the key.
         if (nownode == NULL) {
-            printf("No node matches the key.\n");
+            printf("Any node matches the key.\n");
+            return -1;
         }
     }
 }
