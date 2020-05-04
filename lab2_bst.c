@@ -235,7 +235,6 @@ void lab2_tree_delete(lab2_tree* tree) {
  *  @return                 : status(success or fail)
  */
 void lab2_node_delete(lab2_tree* tree, lab2_node* node) {
-    
     if (node == NULL) {
         printf("[Error]Impossible to delete NULL from tree..\n");
         return;
@@ -391,10 +390,19 @@ void access_sharedtree(thread_arg* thrd) {
     int num_iterations = th_arg->num_iterations;
 
     // 받은 쓰레드 동기화 켜면 1. 경쟁상태이면 0
+    
     int is_sync = th_arg->is_sync;
 
+    
+
+    typedef enum operation {
+        UNKNOWN,
+        INSERT,
+        REMOVE
+    } operation;
+
     int i = 0;
-    int op_mode = -1; // 1: insert 2: remove
+    operation op_mode = UNKNOWN; 
 
     // 쓰레드간 크리티컬 섹션 진입 순서 정해줘야 하는 경우: 락을 이용함
     if (is_sync) {
@@ -403,19 +411,19 @@ void access_sharedtree(thread_arg* thrd) {
         for (i = 0; i < num_iterations; i++) {
             // 무슨 연산 할지 정해주기
             if (i < num_iterations / 2)
-                op_mode = 1;
+                op_mode = INSERT;
             else
-                op_mode = 2;
+                op_mode = REMOVE;
 
             // 스위치문 안에 mutex를 넣는게 나을까...?성능측면에서 비교를 안하니까 쪼금 더 성능이 나을것 같긴 한데....
             switch (op_mode) {
-            case 0: // 트리에 더하기
+            case INSERT: // 트리에 더하기
                 pthread_mutex_lock(&mutex);
                 lab2_node* newnode = lab2_node_create(key_value++);
                 lab2_node_insert(shared_tree, newnode);
                 pthread_mutex_unlock(&mutex);
                 break;
-            case 1: // 트리에서 빼기 -> 뺄때 키 값 없으면 걍 아무 이상 없이 리턴..이경우 걍 search됨.
+            case REMOVE: // 트리에서 빼기 -> 뺄때 키 값 없으면 걍 아무 이상 없이 리턴..이경우 걍 search됨.
                 pthread_mutex_lock(&mutex);
                 lab2_node_remove(shared_tree, rand() % key_value);
                 pthread_mutex_unlock(&mutex);
@@ -428,17 +436,17 @@ void access_sharedtree(thread_arg* thrd) {
         for (i = 0; i < num_iterations; i++) {
             // 무슨 연산 할지 정해주기
             if (i < num_iterations / 2)
-                op_mode = 1;
+                op_mode = INSERT;
             else
-                op_mode = 2;
+                op_mode = REMOVE;
 
             // 스위치문 안에 mutex를 넣는게 나을까...?성능측면에서 비교를 안하니까 쪼금 더 성능이 나을것 같긴 한데....
             switch (op_mode) {
-            case 0: // 트리에 더하기  
+            case INSERT: // 트리에 더하기  
                 lab2_node* newnode = lab2_node_create(key_value++);
                 lab2_node_insert(shared_tree, newnode);
                 break;
-            case 1: // 트리에서 빼기 -> 뺄때 키 값 없으면 걍 아무 이상 없이 리턴..이경우 걍 search됨.
+            case REMOVE: // 트리에서 빼기 -> 뺄때 키 값 없으면 걍 아무 이상 없이 리턴..이경우 걍 search됨.
                 lab2_node_remove(shared_tree, rand() % key_value);    
                 break;
             }
