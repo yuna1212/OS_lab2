@@ -76,28 +76,6 @@ void lab2_tree_delete(lab2_tree *tree);
 void lab2_node_delete(lab2_node *node);
 
 
-/*
- * Lab2 bonus(lab2_bonus.c)
- *  Spin Lock implementation in assembly level. 
- *
- * lab2_bonus.c related functions  
- */
-
-/* assembly implementation example functions */
-void atomic_add( int * value, int inc_val);
-void atomic_sub( int * value, int dec_val);
-void atomic_inc( int * value);
-void atomic_dec( int * value);
-
-/*
- * lab2_bonus.c related functions 
- * TODO
- *  You need to implement these function.
- */
-void lab2_spin_lock(int volatile *lock);
-void lab2_spin_unlock(int volatile *lock);
-
-
 /* lab2_timeval.c related function */
 double get_timeval(struct timeval *tv, struct timeval *tv_end);
 
