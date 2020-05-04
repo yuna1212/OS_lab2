@@ -210,16 +210,12 @@ int lab2_node_remove_cg(lab2_tree* tree, int key) {
  *  @return                 : status(success or fail)
  */
 void lab2_tree_delete(lab2_tree* tree) {
-    lab2_tree* subtree;
-    if (tree->root!=NULL) {
-        subtree->root = tree->root->left;
-        lab2_tree_delete(subtree);
-        subtree->root = tree->root->right;
-        lab2_tree_deletet(tree->root->right);
-        free(subtree->root);
+    if (tree->root != NULL) {
+        lab2_node_delete(tree, tree->root);
+        lab2_tree_delete(tree);
     }
-    
-
+    else
+        return;
 }
 
 /*
