@@ -149,128 +149,45 @@ int lab2_node_insert_cg(lab2_tree* tree, lab2_node* new_node) {
  */
 int lab2_node_remove(lab2_tree* tree, int key) {
     lab2_node* deletenode;
-    lab2_node* nownode = tree->root;
+    lab2_node* now_node = tree->root;
     lab2_node* p_replacing, * replacing;
-    while (1) {
-        // This node deletes itself.
-        if (nownode->key == key) {
-            lab2_node_delete(tree,nownode);
-            return 0;
-        }
-
-        // Didn't find the node to delete yet.
-        // The key node is in rightside because the key is bigger than a key of nownode.
-        else if (key > nownode->key) {
-            nownode = nownode->right;
-        }
-
-        // The key node is in leftside because the key is smaller than a key of nownode.
-        else if (key < nownode->key) {
-            nownode = nownode->left;
-        }
-
-        // Anything matches the key.
-        if (nownode == NULL) {
-            printf("Any node matches the key.\n");
-            return -1;
-        }
-    }
-}
-
-/*
- * TODO
- *  Implement a function which remove nodes from the BST in fine-grained manner.
- *
- *  @param lab2_tree *tree  : bst tha you need to remove node in fine-grained manner from bst which contains key.
- *  @param int key          : key value that you want to delete.
- *  @return                 : status (success or fail)
- */
-int lab2_node_remove_fg(lab2_tree* tree, int key) {
-    // You need to implement lab2_node_remove_fg function.
-}
+    lab2_node* parent_node = NULL;
+    lab2_node* key_node;
 
 
-/*
- * TODO
- *  Implement a function which remove nodes from the BST in coarse-grained manner.
- *
- *  @param lab2_tree *tree  : bst tha you need to remove node in coarse-grained manner from bst which contains key.
- *  @param int key          : key value that you want to delete.
- *  @return                 : status (success or fail)
- */
-int lab2_node_remove_cg(lab2_tree* tree, int key) {
-    // You need to implement lab2_node_remove_cg function.
-}
-
-
-/*
- * TODO
- *  Implement function which delete struct lab2_tree
- *  ( refer to the ./include/lab2_sync_types.h for structure lab2_node )
- *
- *  @param lab2_tree *tree  : bst which you want to delete.
- *  @return                 : status(success or fail)
- */
-void lab2_tree_delete(lab2_tree* tree) {
-    if (tree->root != NULL) {
-        lab2_node_delete(tree, tree->root);
-        lab2_tree_delete(tree);
-    }
-    else
-        return;
-}
-
-/*
- * TODO
- *  Implement function which delete struct lab2_node
- *  ( refer to the ./include/lab2_sync_types.h for structure lab2_node )
- *
- *  @param lab2_tree *tree  : bst node which you want to remove.
- *  @return                 : status(success or fail)
- */
-void lab2_node_delete(lab2_tree* tree, lab2_node* node) {
-    
-    if (node == NULL) {
-        printf("[Error]Impossible to delete NULL from tree..\n");
-        return;
-    }
     typedef enum side_is {
         UNKNOWN,
         LEFT,
         RIGHT
-    } side_is; // 어떤 노드가 부모의 오른쪽인지, 왼쪽인지 정하기
-    
-    lab2_node* parent_node;
-    lab2_node* now_node;
-    side_is nodeSide_is = UNKNOWN;
-    
-    // 노드 위치 찾기
-    parent_node = NULL;
-    now_node = tree->root;
-    while (node != now_node) {
-        // 만약 지금 있는 노드가 NULL이라면 찾는 값이 없는 것이다.
+    } sideis; // 어떤 노드가 부모의 오른쪽인지, 왼쪽인지 정하기
+
+    sideis nodeSide_is = UNKNOWN;
+
+    // 키값 가지고있는 노드 찾기: 반복문 나가면 nownode는 입력키와 같은키 가지는거.
+    while (now_node->key != key) {
         if (now_node == NULL) {
             printf("[Error]No node to delete..Nothing matches the node put by parameter.\n");
             return;
         }
-        // 찾는 값이 더 크다면 오른쪽으로 이동
-        if (node->key > now_node->key) {
+
+        // 찾는게 더 크다면 오른쪽으로 이동
+        if (key > now_node->key) {
             parent_node = now_node;
             now_node = parent_node->right;
             nodeSide_is = RIGHT;
         }
         // 찾는 값이 더 작다면 왼쪽으로 이동
-        else if (node->key < now_node->key) {
+        else if (key < now_node->key) {
             parent_node = now_node;
             now_node = parent_node->left;
             nodeSide_is = LEFT;
         }
     }
-
+    key_node = now_node;
     // nodeSide_is가 UNKNOWN이라는 것은 찾는 노드가 트리의 루트라는 것 의미. 가장 꼭대기 노드 삭제하고싶음!!
-    
+
     // now는 자식이 없다..
-    if (node->left == NULL && node->right == NULL) {
+    if (key_node->left == NULL && key_node->right == NULL) {
         switch (nodeSide_is) {
         case LEFT:
             parent_node->left = NULL;
@@ -283,28 +200,28 @@ void lab2_node_delete(lab2_tree* tree, lab2_node* node) {
             break;
         }
     }
-    
+
     // now는 자식이 하나 있다.
-    else if (node->left == NULL || node->right == NULL) {
+    else if (now_node->left == NULL || now_node->right == NULL) {
         switch (nodeSide_is) {
         case LEFT:
             // now의 왼쪽 자식이 있는것이다
-            if (node->left != NULL) {
+            if (now_node->left != NULL) {
                 parent_node->left = now_node->left;
             }
             // now의 오른쪽 자식이 있는것이다
-            else if (node->right != NULL) {
+            else if (now_node->right != NULL) {
                 parent_node->left = now_node->right;
             }
             break;
-        
+
         case RIGHT:
             // now의 왼쪽 자식이 있는것이다
-            if (node->left != NULL) {
+            if (now_node->left != NULL) {
                 parent_node->right = now_node->left;
             }
             // now의 오른쪽 자식이 있는것이다
-            else if (node->right != NULL) {
+            else if (now_node->right != NULL) {
                 parent_node->right = now_node->right;
             }
             break;
@@ -312,20 +229,19 @@ void lab2_node_delete(lab2_tree* tree, lab2_node* node) {
         case UNKNOWN:
             // tree의 루트를 삭제해야하므로 tree->root를 다음 노드로 가리키게 해야함.
              // now의 왼쪽 자식이 있는것이다
-            if (node->left != NULL) {
+            if (now_node->left != NULL) {
                 tree->root = now_node->left;
             }
             // now의 오른쪽 자식이 있는것이다
-            else if (node->right != NULL) {
+            else if (now_node->right != NULL) {
                 tree->root = now_node->right;
             }
             break;
         }
-        
-    }
 
+    }
     // now는 자식이 둘 다 있다
-    else if (node->left != NULL && node->right != NULL) {
+    else if (now_node->left != NULL && now_node->right != NULL) {
         lab2_node* rightTerminal_node; // now의 왼쪽의 가장 오른쪽 노드
         lab2_node* parent_terminal = NULL; // rightTerminal_node의 부모.
 
@@ -373,7 +289,63 @@ void lab2_node_delete(lab2_tree* tree, lab2_node* node) {
     }
 
     // nownode를 해제하고 비워주기!
-    free(now_node);
-    now_node = NULL;
+    lab2_node_delete(now_node);
+}
 
+/*
+ * TODO
+ *  Implement a function which remove nodes from the BST in fine-grained manner.
+ *
+ *  @param lab2_tree *tree  : bst tha you need to remove node in fine-grained manner from bst which contains key.
+ *  @param int key          : key value that you want to delete.
+ *  @return                 : status (success or fail)
+ */
+int lab2_node_remove_fg(lab2_tree* tree, int key) {
+    // You need to implement lab2_node_remove_fg function.
+}
+
+
+/*
+ * TODO
+ *  Implement a function which remove nodes from the BST in coarse-grained manner.
+ *
+ *  @param lab2_tree *tree  : bst tha you need to remove node in coarse-grained manner from bst which contains key.
+ *  @param int key          : key value that you want to delete.
+ *  @return                 : status (success or fail)
+ */
+int lab2_node_remove_cg(lab2_tree* tree, int key) {
+    // You need to implement lab2_node_remove_cg function.
+}
+
+
+/*
+ * TODO
+ *  Implement function which delete struct lab2_tree
+ *  ( refer to the ./include/lab2_sync_types.h for structure lab2_node )
+ *
+ *  @param lab2_tree *tree  : bst which you want to delete.
+ *  @return                 : status(success or fail)
+ */
+void lab2_tree_delete(lab2_tree* tree) {
+
+    if (tree->root != NULL) {
+        int key = tree->root->key;
+        lab2_node_remove(tree, key);
+        lab2_tree_delete(tree);
+    }
+    else
+        return;
+}
+
+/*
+ * TODO
+ *  Implement function which delete struct lab2_node
+ *  ( refer to the ./include/lab2_sync_types.h for structure lab2_node )
+ *
+ *  @param lab2_tree *tree  : bst node which you want to remove.
+ *  @return                 : status(success or fail)
+ */
+void lab2_node_delete(lab2_node* node) {
+    free(node);
+    node = NULL;
 }
