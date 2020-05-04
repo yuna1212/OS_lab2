@@ -35,14 +35,22 @@ int key_value = 0;
  *  @return                 : status (success or fail)
  */
 int lab2_node_print_inorder(lab2_tree* tree) {
-    // You need to implement lab2_node_print_inorder function.
-    lab2_tree* subtree;
+    // You need to implement lab2_node_print_inorder function.  
     if (tree->root != NULL) {
-        subtree->root = tree->root->left;
-        lab2_node_print_inorder(subtree);
-        printf("The key is %d\n", subtree->root->key);
-        subtree->root = tree->root->right;
-        lab2_node_print_inorder(subtree);
+        lab2_tree* subtree = (lab2_tree*)malloc(sizeof(lab2_tree));
+        *subtree = *tree;
+        if (subtree->root->left != NULL) {
+            subtree->root = tree->root->left;
+            lab2_node_print_inorder(subtree);
+        }
+        printf("The key is %d\n", tree->root->key);
+        *subtree = *tree;
+        if (subtree->root->right != NULL) {
+            subtree->root = tree->root->right;
+            lab2_node_print_inorder(subtree);
+        }
+        free(subtree);
+        return 0;
     }
     else
         return 1;
@@ -152,7 +160,8 @@ int lab2_node_remove(lab2_tree* tree, int key) {
     while (1) {
         // This node deletes itself.
         if (nownode->key == key) {
-            lab2_node_delete(nownode);
+            lab2_node_delete(tree,nownode);
+            return 0;
         }
 
         // Didn't find the node to delete yet.
@@ -168,7 +177,8 @@ int lab2_node_remove(lab2_tree* tree, int key) {
 
         // Anything matches the key.
         if (nownode == NULL) {
-            printf("No node matches the key.\n");
+            printf("Any node matches the key.\n");
+            return -1;
         }
     }
 }
@@ -208,16 +218,12 @@ int lab2_node_remove_cg(lab2_tree* tree, int key) {
  *  @return                 : status(success or fail)
  */
 void lab2_tree_delete(lab2_tree* tree) {
-    lab2_tree* subtree;
-    if (tree->root!=NULL) {
-        subtree->root = tree->root->left;
-        lab2_tree_delete(subtree);
-        subtree->root = tree->root->right;
-        lab2_tree_deletet(tree->root->right);
-        free(subtree->root);
+    if (tree->root != NULL) {
+        lab2_node_delete(tree, tree->root);
+        lab2_tree_delete(tree);
     }
-    
-
+    else
+        return;
 }
 
 /*
@@ -228,32 +234,155 @@ void lab2_tree_delete(lab2_tree* tree) {
  *  @param lab2_tree *tree  : bst node which you want to remove.
  *  @return                 : status(success or fail)
  */
-void lab2_node_delete(lab2_node* node) {
-    lab2_node* deletenode;
-    lab2_node* p_replacing, * replacing;
-    lab2_node* tmp;
-    // Has only rightside subtree.
-    if (node->right != NULL && node->left == NULL) {
-        p_replacing = node;
-        replacing = p_replacing->right;
-        while (replacing->left != NULL) {
-            p_replacing = replacing;
-            replacing = p_replacing->left;
+void lab2_node_delete(lab2_tree* tree, lab2_node* node) {
+    
+    if (node == NULL) {
+        printf("[Error]Impossible to delete NULL from tree..\n");
+        return;
+    }
+    typedef enum side_is {
+        UNKNOWN,
+        LEFT,
+        RIGHT
+    } side_is; // ?´ë–??¸ë“œê°€ ë¶€ëª¨ì˜ ?¤ë¥¸ìª½ì¸ì?, ?¼ìª½?¸ì? ?•?˜ê¸?
+    
+    lab2_node* parent_node;
+    lab2_node* now_node;
+    side_is nodeSide_is = UNKNOWN;
+    
+    // ?¸ë“œ ?„ì¹˜ ì°¾ê¸°
+    parent_node = NULL;
+    now_node = tree->root;
+    while (node != now_node) {
+        // ë§Œ??ì§€ê¸ˆ ?ˆ?” ?¸ë“œê°€ NULL?´ë¼ë©´ ì°¾ëŠ” ê°’???†?” ê²ƒ?´ë‹?
+        if (now_node == NULL) {
+            printf("[Error]No node to delete..Nothing matches the node put by parameter.\n");
+            return;
+        }
+        // ì°¾ëŠ” ê°’???” ?¬ë‹¤ë©´ ?¤ë¥¸ìª½ìœ¼ë? ?´ë™
+        if (node->key > now_node->key) {
+            parent_node = now_node;
+            now_node = parent_node->right;
+            nodeSide_is = RIGHT;
+        }
+        // ì°¾ëŠ” ê°’???” ?‘?¤ë©´ ?¼ìª½?¼ë? ?´ë™
+        else if (node->key < now_node->key) {
+            parent_node = now_node;
+            now_node = parent_node->left;
+            nodeSide_is = LEFT;
         }
     }
-    // Has left subtree.
-    else {
-        p_replacing = node;
-        replacing = p_replacing->left;
-        while (replacing->right != NULL) {
-            p_replacing = replacing;
-            replacing = p_replacing->right;
+
+    // nodeSide_isê°€ UNKNOWN?´ë¼ëŠ” ê²ƒ?€ ì°¾ëŠ” ?¸ë“œê°€ ?¸ë¦¬?˜ ë£¨íŠ¸ë¼ëŠ” ê²ƒ ?˜ë¯? ê°€??ê¼­?€ê¸??¸ë“œ ?­?œ?˜ê³ ?¶ìŒ!!
+    
+    // now?” ?????†??.
+    if (node->left == NULL && node->right == NULL) {
+        switch (nodeSide_is) {
+        case LEFT:
+            parent_node->left = NULL;
+            break;
+        case RIGHT:
+            parent_node->right = NULL;
+            break;
+        case UNKNOWN:
+            tree->root = NULL;
+            break;
         }
     }
-    p_replacing = NULL;
-    free(node);
-    node = replacing;
+	// now?” ?????˜?˜ ?ˆ??
+    else if (node->left == NULL || node->right == NULL) {
+        switch (nodeSide_is) {
+        case LEFT:
+            // now?˜ ?¼ìª½ ?????ˆ?”ê²ƒ?´ë‹?
+            if (node->left != NULL) {
+                parent_node->left = now_node->left;
+            }
+            // now?˜ ?¤ë¥¸ìª??????ˆ?”ê²ƒ?´ë‹?
+            else if (node->right != NULL) {
+                parent_node->left = now_node->right;
+            }
+            break;
+        
+        case RIGHT:
+            // now?˜ ?¼ìª½ ?????ˆ?”ê²ƒ?´ë‹?
+            if (node->left != NULL) {
+                parent_node->right = now_node->left;
+            }
+            // now?˜ ?¤ë¥¸ìª??????ˆ?”ê²ƒ?´ë‹?
+            else if (node->right != NULL) {
+                parent_node->right = now_node->right;
+            }
+            break;
+
+        case UNKNOWN:
+            // tree?˜ ë£¨íŠ¸ë? ?­?œ?´ì•¼í•˜ë¯€ë¡œ tree->rootë¥??¤ìŒ ?¸ë“œë¡œ ê°€ë¦¬í‚¤ê? ?´ì•¼í•?
+             // now?˜ ?¼ìª½ ?????ˆ?”ê²ƒ?´ë‹?
+            if (node->left != NULL) {
+                tree->root = now_node->left;
+            }
+            // now?˜ ?¤ë¥¸ìª??????ˆ?”ê²ƒ?´ë‹?
+            else if (node->right != NULL) {
+                tree->root = now_node->right;
+            }
+            break;
+        }
+        
+    }
+
+    // now?” ?????˜ ???ˆ??
+    else if (node->left != NULL && node->right != NULL) {
+        lab2_node* rightTerminal_node; // now?˜ ?¼ìª½?˜ ê°€???¤ë¥¸ìª??¸ë“œ
+        lab2_node* parent_terminal = NULL; // rightTerminal_node?˜ ë¶€ëª?
+
+        // now?˜ ?¼ìª½???˜ ê°€???¤ë¥¸ìª??¸ë“œ ??‰
+        rightTerminal_node = now_node->left;
+        while (rightTerminal_node->right != NULL) {
+            parent_terminal = rightTerminal_node;
+            rightTerminal_node = parent_terminal->right;
+        }
+
+        // ?´ë?ë¶„??ì¢€ ?·ê?ë¦¬ê¸´ ??.
+        switch (nodeSide_is) {
+        case LEFT:
+            if (parent_terminal != NULL)
+                parent_terminal->right = NULL;
+            else
+                now_node->left = NULL;
+
+            parent_node->left = rightTerminal_node;
+            rightTerminal_node->right = now_node->right;
+            rightTerminal_node->left = now_node->left;
+            break;
+
+        case RIGHT:
+            if (parent_terminal != NULL)
+                parent_terminal->right = NULL;
+            else
+                now_node->left = NULL;
+
+            parent_node->right = rightTerminal_node;
+            rightTerminal_node->right = now_node->right;
+            rightTerminal_node->left = now_node->left;
+            break;
+
+        case UNKNOWN:
+            if (parent_terminal != NULL)
+                parent_terminal->right = NULL;
+            else
+                now_node->left = NULL;
+            tree->root = rightTerminal_node;
+            rightTerminal_node->right = now_node->right;
+            rightTerminal_node->left = now_node->left;
+            break;
+        }
+    }
+
+    // nownodeë¥??´ì œ?˜ê³  ë¹„?Œì£¼ê¸°!
+    free(now_node);
+    now_node = NULL;
+
 }
+
 
 /*
 * °øÀ¯ Æ®¸®¿¡ Á¢±Ù. Á¢±Ù ½º·¹µå´Â ÀÎÀÚ·Î ¹Þ¾Æ. Á¢±ÙÇØ¼­ ¿¬»êÇÏ´Â °÷Àº CS
@@ -349,3 +478,4 @@ int mutex_test(int num_threads, int num_iterations, int is_sync) {
     return 0; // ¸®ÅÏ ±»ÀÌ ÇÊ¿äÇÑ°¡...½Í´Ù...
 
 }
+
