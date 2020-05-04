@@ -26,26 +26,28 @@
  *  @param lab2_tree *tree  : bst to print in-order.
  *  @return                 : status (success or fail)
  */
-int lab2_node_print_inorder(lab2_tree* tree) {
-    // You need to implement lab2_node_print_inorder function.  
+int lab2_node_print_inorder(lab2_tree* tree, int num) {
+    // You need to implement lab2_node_print_inorder function.
     if (tree->root != NULL) {
         lab2_tree* subtree = (lab2_tree*)malloc(sizeof(lab2_tree));
         *subtree = *tree;
         if (subtree->root->left != NULL) {
             subtree->root = tree->root->left;
-            lab2_node_print_inorder(subtree);
+            num=lab2_node_print_inorder(subtree, num);
         }
         printf("The key is %d\n", tree->root->key);
+        num++;
         *subtree = *tree;
+        int num2 = 0;
         if (subtree->root->right != NULL) {
             subtree->root = tree->root->right;
-            lab2_node_print_inorder(subtree);
+            num2=lab2_node_print_inorder(subtree, num2);
         }
         free(subtree);
-        return 0;
+        return num+num2;
     }
     else
-        return 1;
+        return num;
 }
 
 /*
