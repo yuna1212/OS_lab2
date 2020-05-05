@@ -57,6 +57,7 @@ int lab2_node_print_inorder(lab2_tree* tree) {
 lab2_tree* lab2_tree_create() {
     lab2_tree* tree = (lab2_tree*)malloc(sizeof(lab2_tree));
     tree->root = NULL;
+    pthread_mutex_init(&tree->lock, NULL);
     return tree;
 }
 
@@ -70,6 +71,7 @@ lab2_node* lab2_node_create(int key) {
     node->key = key;
     node->left = NULL;
     node->right = NULL;
+    pthread_mutex_init(&node->mutex, NULL);
     return node;
 }
 
@@ -90,7 +92,7 @@ int lab2_node_insert(lab2_tree* tree, lab2_node* new_node) {
         return 0;
     }
     while (1) {
-        if (new_node->key < now->key) {
+        if (new_node->key <= now->key) {
             if (now->left) {
                 now = now->left;
             }
@@ -121,27 +123,27 @@ int lab2_node_insert(lab2_tree* tree, lab2_node* new_node) {
  *  @return                     : status (success or fail)
  */
 int lab2_node_insert_fg(lab2_tree* tree, lab2_node* new_node) {
-    // You need to implement lab2_node_insert_fg function.
-    lab2_node* now = tree->root;
+    if (tree == NULL || new_node == NULL){
+            return -1;
+    }
 
+    lab2_node* now = tree->root;
     // If the tree is empty, new_node becomes root of the tree.
     if (now == NULL) {
+	pthread_mutex_lock(&tree->lock);
         tree->root = new_node;
+	pthread_mutex_unlock(&tree->lock);
         return 0;
     }
     while (1) {
-        // It isn't possible to insert node that has duplicate key value.
-        if (new_node->key == now->key) {
-            printf("Duplicate key value...\n");
-            return -1;
-        }
-
-        if (new_node->key < now->key) {
+        if (new_node->key <= now->key) {
             if (now->left) {
                 now = now->left;
             }
             else {
+		pthread_mutex_lock(&(now->mutex));
                 now->left = new_node;
+                pthread_mutex_unlock(&(now->mutex)); 
                 break;
             }
         }
@@ -150,13 +152,16 @@ int lab2_node_insert_fg(lab2_tree* tree, lab2_node* new_node) {
                 now = now->right;
             }
             else {
+		pthread_mutex_lock(&(now->mutex));
                 now->right = new_node;
+		pthread_mutex_unlock(&(now->mutex));
                 break;
             }
         }
     }
     return 0;
 }
+
 
 /*
  * TODO
@@ -167,8 +172,42 @@ int lab2_node_insert_fg(lab2_tree* tree, lab2_node* new_node) {
  *  @return                     : status (success or fail)
  */
 int lab2_node_insert_cg(lab2_tree* tree, lab2_node* new_node) {
-    // You need to implement lab2_node_insert_cg function.
+    if (tree == NULL || new_node == NULL){
+            return -1;
+    }
+
+    lab2_node* now = tree->root;
+    // If the tree is empty, new_node becomes root of the tree.
+    pthread_mutex_lock(&tree->lock);
+    if (now == NULL) {
+        tree->root = new_node;
+    }
+    else {
+        while (1) {
+            if (new_node->key <= now->key) {
+                if (now->left) {
+                    now = now->left;
+                }
+                else {
+                    now->left = new_node;
+                    break;
+                }
+            }
+            else {
+                if (now->right) {
+                    now = now->right;
+                }
+                else {
+                    now->right = new_node;
+                    break;
+                }
+            }
+        }
+    }
+    pthread_mutex_unlock(&tree->lock);
+    return 0;
 }
+
 
 /*
  * TODO
