@@ -28,27 +28,30 @@
  *  @param lab2_tree *tree  : bst to print in-order.
  *  @return                 : status (success or fail)
  */
-int lab2_node_print_inorder(lab2_tree* tree) {
-    // You need to implement lab2_node_print_inorder function.  
+int lab2_node_print_inorder(lab2_tree* tree, int num) {
+    // You need to implement lab2_node_print_inorder function.
     if (tree->root != NULL) {
         lab2_tree* subtree = (lab2_tree*)malloc(sizeof(lab2_tree));
         *subtree = *tree;
         if (subtree->root->left != NULL) {
             subtree->root = tree->root->left;
-            lab2_node_print_inorder(subtree);
+            num=lab2_node_print_inorder(subtree, num);
         }
-        printf("The key is %d\n", tree->root->key);
+        //printf("The key is %d\n", tree->root->key);
+        num++;
         *subtree = *tree;
+        int num2 = 0;
         if (subtree->root->right != NULL) {
             subtree->root = tree->root->right;
-            lab2_node_print_inorder(subtree);
+            num2=lab2_node_print_inorder(subtree, num2);
         }
         free(subtree);
-        return 0;
+        return num+num2;
     }
     else
-        return 1;
+        return num;
 }
+
 
 /*
 * Create empty Binary Search Tree.
@@ -92,6 +95,10 @@ int lab2_node_insert(lab2_tree* tree, lab2_node* new_node) {
         return 0;
     }
     while (1) {
+	//if (new_node->key == now->key){
+		//printf("duplicate key..\n");
+	//	return -1;
+	//}
         if (new_node->key <= now->key) {
             if (now->left) {
                 now = now->left;
@@ -217,35 +224,181 @@ int lab2_node_insert_cg(lab2_tree* tree, lab2_node* new_node) {
  *  @param int key          : key value that you want to delete.
  *  @return                 : status (success or fail)
  */
+
 int lab2_node_remove(lab2_tree* tree, int key) {
-    lab2_node* deletenode;
-    lab2_node* nownode = tree->root;
-    lab2_node* p_replacing, * replacing;
-    while (1) {
-        // This node deletes itself.
-        if (nownode->key == key) {
-            lab2_node_delete(tree,nownode);
-            return 0;
+    typedef enum side_is {
+        UNKNOWN,
+        LEFT_CHILD,
+        RIGHT_CHILD
+    } sideis; // Ÿî¶² ³ëµå°¡ ºÎžðÀÇ ¿Àž¥ÂÊÀÎÁö, ¿ÞÂÊÀÎÁö Á€ÇÏ±â
+
+    lab2_node* now_node = tree->root; // ¹æ¹®ÇÏŽÂ ³ëµå
+    lab2_node* parent_node = NULL; // ¹æ¹®ÇÏŽÂ ³ëµåÀÇ ºÎžð ³ëµå
+    lab2_node* key_node; // »èÁŠÇÒ ³ëµå
+
+    sideis nownode_is = UNKNOWN;
+
+    // Å°°ª °¡Áö°íÀÖŽÂ ³ëµå Ã£±â: ¹Ýº¹¹® ³ª°¡žé nownodeŽÂ ÀÔ·ÂÅ°¿Í °°ÀºÅ° °¡ÁöŽÂ°Å.
+    while (now_node->key != key) {
+        if (now_node == NULL) {
+            printf("[Error]No node to delete..Nothing matches the node put by parameter.\n");
+            return LAB2_ERROR;
         }
 
-        // Didn't find the node to delete yet.
-        // The key node is in rightside because the key is bigger than a key of nownode.
-        else if (key > nownode->key) {
-            nownode = nownode->right;
+        // Ã£ŽÂ°Ô Žõ Å©ŽÙžé ¿Àž¥ÂÊÀž·Î ÀÌµ¿
+        if (key > now_node->key) {
+            parent_node = now_node;
+            now_node = parent_node->right;
+            nownode_is = RIGHT_CHILD;
         }
-
-        // The key node is in leftside because the key is smaller than a key of nownode.
-        else if (key < nownode->key) {
-            nownode = nownode->left;
-        }
-
-        // Anything matches the key.
-        if (nownode == NULL) {
-            printf("Any node matches the key.\n");
-            return -1;
+        // Ã£ŽÂ °ªÀÌ Žõ ÀÛŽÙžé ¿ÞÂÊÀž·Î ÀÌµ¿
+        else if (key < now_node->key) {
+            parent_node = now_node;
+            now_node = parent_node->left;
+            nownode_is = LEFT_CHILD;
         }
     }
+    // nodeSide_is°¡ UNKNOWNÀÌ¶óŽÂ °ÍÀº Ã£ŽÂ ³ëµå°¡ Æ®ž®ÀÇ ·çÆ®¶óŽÂ °Í ÀÇ¹Ì. °¡Àå ²ÀŽë±â ³ëµå »èÁŠÇÏ°íœÍÀœ!!
+
+    // nowŽÂ ÀÚœÄÀÌ ŸøŽÙ..
+    if (now_node->left == NULL && now_node->right == NULL) {
+        switch (nownode_is) {
+        case LEFT_CHILD:
+            parent_node->left = NULL;
+            break;
+        case RIGHT_CHILD:
+            parent_node->right = NULL;
+            break;
+        case UNKNOWN:
+            tree->root = NULL;
+            break;
+        }
+    }
+
+    // nowŽÂ ÀÚœÄÀÌ ÇÏ³ª ÀÖŽÙ.
+    else if (now_node->left == NULL || now_node->right == NULL) {
+        switch (nownode_is) {
+        case LEFT_CHILD:
+            // nowÀÇ ¿ÞÂÊ ÀÚœÄÀÌ ÀÖŽÂ°ÍÀÌŽÙ
+            if (now_node->left != NULL) {
+                parent_node->left = now_node->left;
+            }
+            // nowÀÇ ¿Àž¥ÂÊ ÀÚœÄÀÌ ÀÖŽÂ°ÍÀÌŽÙ
+            else if (now_node->right != NULL) {
+                parent_node->left = now_node->right;
+            }
+            break;
+
+        case RIGHT_CHILD:
+            // nowÀÇ ¿ÞÂÊ ÀÚœÄÀÌ ÀÖŽÂ°ÍÀÌŽÙ
+            if (now_node->left != NULL) {
+                parent_node->right = now_node->left;
+            }
+            // nowÀÇ ¿Àž¥ÂÊ ÀÚœÄÀÌ ÀÖŽÂ°ÍÀÌŽÙ
+            else if (now_node->right != NULL) {
+                parent_node->right = now_node->right;
+            }
+            break;
+
+        case UNKNOWN:
+            // treeÀÇ ·çÆ®žŠ »èÁŠÇØŸßÇÏ¹Ç·Î tree->rootžŠ ŽÙÀœ ³ëµå·Î °¡ž®Å°°Ô ÇØŸßÇÔ.
+             // nowÀÇ ¿ÞÂÊ ÀÚœÄÀÌ ÀÖŽÂ°ÍÀÌŽÙ
+            if (now_node->left != NULL) {
+                tree->root = now_node->left;
+            }
+            // nowÀÇ ¿Àž¥ÂÊ ÀÚœÄÀÌ ÀÖŽÂ°ÍÀÌŽÙ
+            else if (now_node->right != NULL) {
+                tree->root = now_node->right;
+            }
+            break;
+        }
+    }
+    // nowŽÂ ÀÚœÄÀÌ µÑ ŽÙ ÀÖŽÙ
+    else if (now_node->left != NULL && now_node->right != NULL) {
+        lab2_node* rightTerminal_node; // nowÀÇ ¿ÞÂÊÀÇ °¡Àå ¿Àž¥ÂÊ ³ëµå
+        lab2_node* parent_terminal; // rightTerminal_nodeÀÇ ºÎžð.
+
+        // nowÀÇ ¿ÞÂÊÀÚœÄÀÇ °¡Àå ¿Àž¥ÂÊ ³ëµå Åœ»ö
+        rightTerminal_node = now_node->left;
+        parent_terminal = now_node;
+        while (rightTerminal_node->right != NULL) {
+            parent_terminal = rightTerminal_node;
+            rightTerminal_node = parent_terminal->right;
+        }
+
+        // ÀÌºÎºÐÀÌ Á» Çò°¥ž®±ä ÇØ..
+        switch (nownode_is) {
+        case LEFT_CHILD:
+            // ž»ŽÜ ³ëµå¿Í ±× ºÎžð ³ëµåžŠ ¿¬°á ²÷ŽÂŽÙ.
+            if (parent_terminal != now_node) {
+                parent_terminal->right = NULL;
+
+                if (rightTerminal_node->left != NULL) {
+                    parent_terminal->right = rightTerminal_node->left;
+                }
+            } 
+            else {
+                now_node->left = NULL;
+                if (rightTerminal_node->left != NULL) {
+                    parent_terminal->left = rightTerminal_node->left;
+                }
+            }    
+            // ž»ŽÜ ³ëµåžŠ ÀÌµ¿ÇÑŽÙ.
+
+            parent_node->left = rightTerminal_node;
+            rightTerminal_node->right = now_node->right;
+            rightTerminal_node->left = now_node->left;
+            break;
+
+        case RIGHT_CHILD:
+            if (parent_terminal != now_node) {
+                parent_terminal->right = NULL;
+
+                if (rightTerminal_node->left != NULL) {
+                    parent_terminal->right = rightTerminal_node->left;
+                }
+            }
+            else {
+                now_node->left = NULL;
+                if (rightTerminal_node->left != NULL) {
+                    parent_terminal->left = rightTerminal_node->left;
+                }
+            }
+            
+	    parent_node->right = rightTerminal_node;
+            rightTerminal_node->right = now_node->right;
+            rightTerminal_node->left = now_node->left;
+            break;
+
+        case UNKNOWN:
+            if (parent_terminal != now_node) {
+                parent_terminal->right = NULL;
+
+                if (rightTerminal_node->left != NULL) {
+                    parent_terminal->right = rightTerminal_node->left;
+                }
+            }
+            else {
+                now_node->left = NULL;
+                if (rightTerminal_node->left != NULL) {
+                    parent_terminal->left = rightTerminal_node->left;
+                }
+            }
+
+	    tree->root = rightTerminal_node;
+            rightTerminal_node->right = now_node->right;
+            rightTerminal_node->left = now_node->left;
+
+            break;
+        }
+
+    }
+    // nownodežŠ ÇØÁŠÇÏ°í ºñ¿öÁÖ±â!
+    lab2_node_delete(now_node);
 }
+
+
+
 
 /*
  * TODO
@@ -282,13 +435,16 @@ int lab2_node_remove_cg(lab2_tree* tree, int key) {
  *  @return                 : status(success or fail)
  */
 void lab2_tree_delete(lab2_tree* tree) {
+
     if (tree->root != NULL) {
-        lab2_node_delete(tree, tree->root);
+        int key = tree->root->key;
+        lab2_node_remove(tree, key);
         lab2_tree_delete(tree);
     }
     else
         return;
 }
+
 
 /*
  * TODO
@@ -298,149 +454,11 @@ void lab2_tree_delete(lab2_tree* tree) {
  *  @param lab2_tree *tree  : bst node which you want to remove.
  *  @return                 : status(success or fail)
  */
-void lab2_node_delete(lab2_tree* tree, lab2_node* node) {
-    if (node == NULL) {
-        printf("[Error]Impossible to delete NULL from tree..\n");
-        return;
-    }
-    typedef enum side_is {
-        UNKNOWN,
-        LEFT,
-        RIGHT
-    } side_is; 
-    
-    lab2_node* parent_node;
-    lab2_node* now_node;
-    side_is nodeSide_is = UNKNOWN;
-    
-    
-    parent_node = NULL;
-    now_node = tree->root;
-    while (node != now_node) {
-    
-        if (now_node == NULL) {
-            printf("[Error]No node to delete..Nothing matches the node put by parameter.\n");
-            return;
-        }
-    
-        if (node->key > now_node->key) {
-            parent_node = now_node;
-            now_node = parent_node->right;
-            nodeSide_is = RIGHT;
-        }
-    
-        else if (node->key < now_node->key) {
-            parent_node = now_node;
-            now_node = parent_node->left;
-            nodeSide_is = LEFT;
-        }
-    }
 
-   
-    if (node->left == NULL && node->right == NULL) {
-        switch (nodeSide_is) {
-        case LEFT:
-            parent_node->left = NULL;
-            break;
-        case RIGHT:
-            parent_node->right = NULL;
-            break;
-        case UNKNOWN:
-            tree->root = NULL;
-            break;
-        }
-    }
-	
-    else if (node->left == NULL || node->right == NULL) {
-        switch (nodeSide_is) {
-        case LEFT:
-    
-            if (node->left != NULL) {
-                parent_node->left = now_node->left;
-            }
-    
-            else if (node->right != NULL) {
-                parent_node->left = now_node->right;
-            }
-            break;
-        
-        case RIGHT:
-    
-            if (node->left != NULL) {
-                parent_node->right = now_node->left;
-            }
-    
-            else if (node->right != NULL) {
-                parent_node->right = now_node->right;
-            }
-            break;
 
-        case UNKNOWN:
-    
-            if (node->left != NULL) {
-                tree->root = now_node->left;
-            }
-    
-            else if (node->right != NULL) {
-                tree->root = now_node->right;
-            }
-            break;
-        }
-        
-    }
-
-    
-    else if (node->left != NULL && node->right != NULL) {
-        lab2_node* rightTerminal_node; 
-        lab2_node* parent_terminal = NULL; 
-
-        
-        rightTerminal_node = now_node->left;
-        while (rightTerminal_node->right != NULL) {
-            parent_terminal = rightTerminal_node;
-            rightTerminal_node = parent_terminal->right;
-        }
-
-        
-        switch (nodeSide_is) {
-        case LEFT:
-            if (parent_terminal != NULL)
-                parent_terminal->right = NULL;
-            else
-                now_node->left = NULL;
-
-            parent_node->left = rightTerminal_node;
-            rightTerminal_node->right = now_node->right;
-            rightTerminal_node->left = now_node->left;
-            break;
-
-        case RIGHT:
-            if (parent_terminal != NULL)
-                parent_terminal->right = NULL;
-            else
-                now_node->left = NULL;
-
-            parent_node->right = rightTerminal_node;
-            rightTerminal_node->right = now_node->right;
-            rightTerminal_node->left = now_node->left;
-            break;
-
-        case UNKNOWN:
-            if (parent_terminal != NULL)
-                parent_terminal->right = NULL;
-            else
-                now_node->left = NULL;
-            tree->root = rightTerminal_node;
-            rightTerminal_node->right = now_node->right;
-            rightTerminal_node->left = now_node->left;
-            break;
-        }
-    }
-
-    free(now_node);
-    now_node = NULL;
-
+void lab2_node_delete(lab2_node* node) {
+    free(node);
+    node = NULL;
 }
-
 
 

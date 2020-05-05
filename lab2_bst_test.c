@@ -47,6 +47,7 @@ static void print_result(lab2_tree *tree,int num_threads,int node_count ,int is_
     char *cond[] = {"fine-grained BST  ", "coarse-grained BST", "single thread BST"};
     char *op[] = {"insert","delete"};
     int result_count=0;
+    int num=0;
 
 
     printf("=====  Multi thread %s  %s experiment  =====\n",cond[is_sync],op[op_type]);
@@ -56,8 +57,8 @@ static void print_result(lab2_tree *tree,int num_threads,int node_count ,int is_
     printf("    execution time      : %lf seconds \n\n",time);
 
     printf("\n BST inorder iteration result : \n");
-    result_count=lab2_node_print_inorder(tree);
-    printf("    total node count    : %d \n\n",node_count);
+    result_count=lab2_node_print_inorder(tree, num);
+    printf("    total node count    : %d \n\n",result_count);
 
 
 }
@@ -102,6 +103,7 @@ void bst_test(int num_threads,int node_count){
     lab2_node *node;    
     struct timeval tv_insert_start, tv_insert_end, tv_delete_start, tv_delete_end, tv_start, tv_end;
     int errors,i=0,count=0;
+    int j=0;
     int root_data = 40; 
     int term = node_count / num_threads, is_sync;
     double exe_time=0.0;
@@ -109,10 +111,10 @@ void bst_test(int num_threads,int node_count){
     int *data = (int*)malloc(sizeof(int)*node_count);
 
     srand(time(NULL));
+    
     for (i=0; i < node_count; i++) { 
-        data[i] = rand();
+         data[i] = rand();
     }
-
     if (!(threads = (thread_arg*)malloc(sizeof(thread_arg) * num_threads)))
         abort();
 
@@ -132,9 +134,14 @@ void bst_test(int num_threads,int node_count){
     print_result(tree,num_threads, node_count, LAB2_TYPE_SINGLE,LAB2_OPTYPE_INSERT ,exe_time);
     lab2_tree_delete(tree);
 
+    /*
+     * multi thread inse
+     */
+
     /* 
      * multi therad insert test coarse-grained 
      */
+    /*
     is_sync = LAB2_TYPE_COARSEGRAINED;
     tree = lab2_tree_create();
 
@@ -157,10 +164,11 @@ void bst_test(int num_threads,int node_count){
     exe_time = get_timeval(&tv_insert_start, &tv_insert_end);
     print_result(tree,num_threads, node_count, is_sync,LAB2_OPTYPE_INSERT ,exe_time);
     lab2_tree_delete(tree);
-
+    */
     /*
      *  multi thread insert test fine-grained \
      */
+    /*
     is_sync = LAB2_TYPE_FINEGRAINED;
     tree = lab2_tree_create();
 
@@ -183,10 +191,11 @@ void bst_test(int num_threads,int node_count){
     exe_time = get_timeval(&tv_insert_start, &tv_insert_end);
     print_result(tree,num_threads, node_count, is_sync, LAB2_OPTYPE_INSERT,exe_time);
     lab2_tree_delete(tree);
-    
+    */
     /* 
      * single thread delete test
      */
+    
 
     tree = lab2_tree_create();
     for (i=0 ; i < node_count ; i++) {               
@@ -207,6 +216,7 @@ void bst_test(int num_threads,int node_count){
     /* 
      * multi thread delete test coarse-grained  
      */
+    /*
     is_sync = LAB2_TYPE_COARSEGRAINED;
     tree = lab2_tree_create();
 
@@ -237,10 +247,11 @@ void bst_test(int num_threads,int node_count){
 
     print_result(tree,num_threads, node_count, is_sync,LAB2_OPTYPE_DELETE,exe_time);
     lab2_tree_delete(tree);
-
+*/
     /* 
      * multi thread delete test fine-grained  
      */
+    /*
     is_sync = LAB2_TYPE_FINEGRAINED;
     tree = lab2_tree_create();
     for (i=0; i < node_count; i++) { 
@@ -271,7 +282,7 @@ void bst_test(int num_threads,int node_count){
 
     print_result(tree ,num_threads, node_count, is_sync, LAB2_OPTYPE_DELETE,exe_time);
     lab2_tree_delete(tree);
-
+*/
     printf("\n");
 
     free(threads);
