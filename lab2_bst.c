@@ -22,8 +22,6 @@
 // 뮤텍스 초기화
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-// 공유 자원: shared tree
-lab2_tree* shared_tree = lab2_tree_create();
 
 // key value는 0부터 순서대로 줌.
 int key_value = 0;
@@ -34,26 +32,28 @@ int key_value = 0;
  *  @param lab2_tree *tree  : bst to print in-order.
  *  @return                 : status (success or fail)
  */
-int lab2_node_print_inorder(lab2_tree* tree) {
-    // You need to implement lab2_node_print_inorder function.  
+int lab2_node_print_inorder(lab2_tree* tree, int num) {
+    // You need to implement lab2_node_print_inorder function.
     if (tree->root != NULL) {
         lab2_tree* subtree = (lab2_tree*)malloc(sizeof(lab2_tree));
         *subtree = *tree;
         if (subtree->root->left != NULL) {
             subtree->root = tree->root->left;
-            lab2_node_print_inorder(subtree);
+            num=lab2_node_print_inorder(subtree, num);
         }
-        printf("The key is %d\n", tree->root->key);
+        //printf("The key is %d\n", tree->root->key);
+        num++;
         *subtree = *tree;
+        int num2 = 0;
         if (subtree->root->right != NULL) {
             subtree->root = tree->root->right;
-            lab2_node_print_inorder(subtree);
+            num2=lab2_node_print_inorder(subtree, num2);
         }
         free(subtree);
-        return 0;
+        return num+num2;
     }
     else
-        return 1;
+        return num;
 }
 
 /*
@@ -155,33 +155,149 @@ int lab2_node_insert_cg(lab2_tree* tree, lab2_node* new_node) {
  */
 int lab2_node_remove(lab2_tree* tree, int key) {
     lab2_node* deletenode;
-    lab2_node* nownode = tree->root;
+    lab2_node* now_node = tree->root;
     lab2_node* p_replacing, * replacing;
-    while (1) {
-        // This node deletes itself.
-        if (nownode->key == key) {
-            lab2_node_delete(tree,nownode);
-            return 0;
+    lab2_node* parent_node = NULL;
+    lab2_node* key_node;
+
+
+    typedef enum side_is {
+        UNKNOWN,
+        LEFT,
+        RIGHT
+    } sideis; // 어떤 노드가 부모의 오른쪽인지, 왼쪽인지 정하기
+
+    sideis nodeSide_is = UNKNOWN;
+
+    // 키값 가지고있는 노드 찾기: 반복문 나가면 nownode는 입력키와 같은키 가지는거.
+    while (now_node->key != key) {
+        if (now_node == NULL) {
+            printf("[Error]No node to delete..Nothing matches the node put by parameter.\n");
+            return;
         }
 
-        // Didn't find the node to delete yet.
-        // The key node is in rightside because the key is bigger than a key of nownode.
-        else if (key > nownode->key) {
-            nownode = nownode->right;
+        // 찾는게 더 크다면 오른쪽으로 이동
+        if (key > now_node->key) {
+            parent_node = now_node;
+            now_node = parent_node->right;
+            nodeSide_is = RIGHT;
         }
-
-        // The key node is in leftside because the key is smaller than a key of nownode.
-        else if (key < nownode->key) {
-            nownode = nownode->left;
-        }
-
-        // Anything matches the key.
-        if (nownode == NULL) {
-            printf("Any node matches the key.\n");
-            return -1;
+        // 찾는 값이 더 작다면 왼쪽으로 이동
+        else if (key < now_node->key) {
+            parent_node = now_node;
+            now_node = parent_node->left;
+            nodeSide_is = LEFT;
         }
     }
+    key_node = now_node;
+    // nodeSide_is가 UNKNOWN이라는 것은 찾는 노드가 트리의 루트라는 것 의미. 가장 꼭대기 노드 삭제하고싶음!!
+
+    // now는 자식이 없다..
+    if (key_node->left == NULL && key_node->right == NULL) {
+        switch (nodeSide_is) {
+        case LEFT:
+            parent_node->left = NULL;
+            break;
+        case RIGHT:
+            parent_node->right = NULL;
+            break;
+        case UNKNOWN:
+            tree->root = NULL;
+            break;
+        }
+    }
+
+    // now는 자식이 하나 있다.
+    else if (now_node->left == NULL || now_node->right == NULL) {
+        switch (nodeSide_is) {
+        case LEFT:
+            // now의 왼쪽 자식이 있는것이다
+            if (now_node->left != NULL) {
+                parent_node->left = now_node->left;
+            }
+            // now의 오른쪽 자식이 있는것이다
+            else if (now_node->right != NULL) {
+                parent_node->left = now_node->right;
+            }
+            break;
+
+        case RIGHT:
+            // now의 왼쪽 자식이 있는것이다
+            if (now_node->left != NULL) {
+                parent_node->right = now_node->left;
+            }
+            // now의 오른쪽 자식이 있는것이다
+            else if (now_node->right != NULL) {
+                parent_node->right = now_node->right;
+            }
+            break;
+
+        case UNKNOWN:
+            // tree의 루트를 삭제해야하므로 tree->root를 다음 노드로 가리키게 해야함.
+             // now의 왼쪽 자식이 있는것이다
+            if (now_node->left != NULL) {
+                tree->root = now_node->left;
+            }
+            // now의 오른쪽 자식이 있는것이다
+            else if (now_node->right != NULL) {
+                tree->root = now_node->right;
+            }
+            break;
+        }
+
+    }
+    // now는 자식이 둘 다 있다
+    else if (now_node->left != NULL && now_node->right != NULL) {
+        lab2_node* rightTerminal_node; // now의 왼쪽의 가장 오른쪽 노드
+        lab2_node* parent_terminal = NULL; // rightTerminal_node의 부모.
+
+        // now의 왼쪽자식의 가장 오른쪽 노드 탐색
+        rightTerminal_node = now_node->left;
+        while (rightTerminal_node->right != NULL) {
+            parent_terminal = rightTerminal_node;
+            rightTerminal_node = parent_terminal->right;
+        }
+
+        // 이부분이 좀 헷갈리긴 해..
+        switch (nodeSide_is) {
+        case LEFT:
+            if (parent_terminal != NULL)
+                parent_terminal->right = NULL;
+            else
+                now_node->left = NULL;
+
+            parent_node->left = rightTerminal_node;
+            rightTerminal_node->right = now_node->right;
+            rightTerminal_node->left = now_node->left;
+            break;
+
+        case RIGHT:
+            if (parent_terminal != NULL)
+                parent_terminal->right = NULL;
+            else
+                now_node->left = NULL;
+
+            parent_node->right = rightTerminal_node;
+            rightTerminal_node->right = now_node->right;
+            rightTerminal_node->left = now_node->left;
+            break;
+
+        case UNKNOWN:
+            if (parent_terminal != NULL)
+                parent_terminal->right = NULL;
+            else
+                now_node->left = NULL;
+            tree->root = rightTerminal_node;
+            rightTerminal_node->right = now_node->right;
+            rightTerminal_node->left = now_node->left;
+            break;
+        }
+    }
+
+    // nownode를 해제하고 비워주기!
+    lab2_node_delete(now_node);
 }
+
 
 /*
  * TODO
@@ -218,8 +334,10 @@ int lab2_node_remove_cg(lab2_tree* tree, int key) {
  *  @return                 : status(success or fail)
  */
 void lab2_tree_delete(lab2_tree* tree) {
+
     if (tree->root != NULL) {
-        lab2_node_delete(tree, tree->root);
+        int key = tree->root->key;
+        lab2_node_remove(tree, key);
         lab2_tree_delete(tree);
     }
     else
@@ -234,252 +352,9 @@ void lab2_tree_delete(lab2_tree* tree) {
  *  @param lab2_tree *tree  : bst node which you want to remove.
  *  @return                 : status(success or fail)
  */
-void lab2_node_delete(lab2_tree* tree, lab2_node* node) {
-    if (node == NULL) {
-        printf("[Error]Impossible to delete NULL from tree..\n");
-        return;
-    }
-    typedef enum side_is {
-        UNKNOWN,
-        LEFT,
-        RIGHT
-    } side_is; 
-    
-    lab2_node* parent_node;
-    lab2_node* now_node;
-    side_is nodeSide_is = UNKNOWN;
-    
-    
-    parent_node = NULL;
-    now_node = tree->root;
-    while (node != now_node) {
-    
-        if (now_node == NULL) {
-            printf("[Error]No node to delete..Nothing matches the node put by parameter.\n");
-            return;
-        }
-    
-        if (node->key > now_node->key) {
-            parent_node = now_node;
-            now_node = parent_node->right;
-            nodeSide_is = RIGHT;
-        }
-    
-        else if (node->key < now_node->key) {
-            parent_node = now_node;
-            now_node = parent_node->left;
-            nodeSide_is = LEFT;
-        }
-    }
-
-   
-    if (node->left == NULL && node->right == NULL) {
-        switch (nodeSide_is) {
-        case LEFT:
-            parent_node->left = NULL;
-            break;
-        case RIGHT:
-            parent_node->right = NULL;
-            break;
-        case UNKNOWN:
-            tree->root = NULL;
-            break;
-        }
-    }
-	
-    else if (node->left == NULL || node->right == NULL) {
-        switch (nodeSide_is) {
-        case LEFT:
-    
-            if (node->left != NULL) {
-                parent_node->left = now_node->left;
-            }
-    
-            else if (node->right != NULL) {
-                parent_node->left = now_node->right;
-            }
-            break;
-        
-        case RIGHT:
-    
-            if (node->left != NULL) {
-                parent_node->right = now_node->left;
-            }
-    
-            else if (node->right != NULL) {
-                parent_node->right = now_node->right;
-            }
-            break;
-
-        case UNKNOWN:
-    
-            if (node->left != NULL) {
-                tree->root = now_node->left;
-            }
-    
-            else if (node->right != NULL) {
-                tree->root = now_node->right;
-            }
-            break;
-        }
-        
-    }
-
-    
-    else if (node->left != NULL && node->right != NULL) {
-        lab2_node* rightTerminal_node; 
-        lab2_node* parent_terminal = NULL; 
-
-        
-        rightTerminal_node = now_node->left;
-        while (rightTerminal_node->right != NULL) {
-            parent_terminal = rightTerminal_node;
-            rightTerminal_node = parent_terminal->right;
-        }
-
-        
-        switch (nodeSide_is) {
-        case LEFT:
-            if (parent_terminal != NULL)
-                parent_terminal->right = NULL;
-            else
-                now_node->left = NULL;
-
-            parent_node->left = rightTerminal_node;
-            rightTerminal_node->right = now_node->right;
-            rightTerminal_node->left = now_node->left;
-            break;
-
-        case RIGHT:
-            if (parent_terminal != NULL)
-                parent_terminal->right = NULL;
-            else
-                now_node->left = NULL;
-
-            parent_node->right = rightTerminal_node;
-            rightTerminal_node->right = now_node->right;
-            rightTerminal_node->left = now_node->left;
-            break;
-
-        case UNKNOWN:
-            if (parent_terminal != NULL)
-                parent_terminal->right = NULL;
-            else
-                now_node->left = NULL;
-            tree->root = rightTerminal_node;
-            rightTerminal_node->right = now_node->right;
-            rightTerminal_node->left = now_node->left;
-            break;
-        }
-    }
-
-    free(now_node);
-    now_node = NULL;
-
+void lab2_node_delete(lab2_node* node) {
+    free(node);
+    node = NULL;
 }
 
-
-/*
-* 공유 트리에 접근. 접근 스레드는 인자로 받아. 접근해서 연산하는 곳은 CS
-*/
-void access_sharedtree(thread_arg* thrd) {
-    //쓰레드 구조체 받기
-    thread_arg* th_arg = (thread_arg*)arg;
-
-    // 반복 횟수는 받은 쓰레드의 반복 횟수로
-    int num_iterations = th_arg->num_iterations;
-
-    // 받은 쓰레드 동기화 켜면 1. 경쟁상태이면 0
-    
-    int is_sync = th_arg->is_sync;
-
-    
-
-    typedef enum operation {
-        UNKNOWN,
-        INSERT,
-        REMOVE
-    } operation;
-
-    int i = 0;
-    operation op_mode = UNKNOWN; 
-
-    // 쓰레드간 크리티컬 섹션 진입 순서 정해줘야 하는 경우: 락을 이용함
-    if (is_sync) {
-        
-        // 쓰레드의 반복 횟수만큼 루프
-        for (i = 0; i < num_iterations; i++) {
-            // 무슨 연산 할지 정해주기
-            if (i < num_iterations / 2)
-                op_mode = INSERT;
-            else
-                op_mode = REMOVE;
-
-            // 스위치문 안에 mutex를 넣는게 나을까...?성능측면에서 비교를 안하니까 쪼금 더 성능이 나을것 같긴 한데....
-            switch (op_mode) {
-            case INSERT: // 트리에 더하기
-                pthread_mutex_lock(&mutex);
-                lab2_node* newnode = lab2_node_create(key_value++);
-                lab2_node_insert(shared_tree, newnode);
-                pthread_mutex_unlock(&mutex);
-                break;
-            case REMOVE: // 트리에서 빼기 -> 뺄때 키 값 없으면 걍 아무 이상 없이 리턴..이경우 걍 search됨.
-                pthread_mutex_lock(&mutex);
-                lab2_node_remove(shared_tree, rand() % key_value);
-                pthread_mutex_unlock(&mutex);
-                break;
-            }
-        }
-    }
-    else { // 쓰레드가 하나만 접근하려고 한다면: 락은 필요 없음
-        // 쓰레드의 반복 횟수만큼 루프
-        for (i = 0; i < num_iterations; i++) {
-            // 무슨 연산 할지 정해주기
-            if (i < num_iterations / 2)
-                op_mode = INSERT;
-            else
-                op_mode = REMOVE;
-
-            // 스위치문 안에 mutex를 넣는게 나을까...?성능측면에서 비교를 안하니까 쪼금 더 성능이 나을것 같긴 한데....
-            switch (op_mode) {
-            case INSERT: // 트리에 더하기  
-                lab2_node* newnode = lab2_node_create(key_value++);
-                lab2_node_insert(shared_tree, newnode);
-                break;
-            case REMOVE: // 트리에서 빼기 -> 뺄때 키 값 없으면 걍 아무 이상 없이 리턴..이경우 걍 search됨.
-                lab2_node_remove(shared_tree, rand() % key_value);    
-                break;
-            }
-        }
-    }
-}
-
-// 락 시험해보기: 쓰레드 몇개 만들건지, 하나의 쓰레드에서 연산은 몇번 반복할건지, 스레드는 CS에 동시에 진입할 수 있는지 매개변수로 받음
-int mutex_test(int num_threads, int num_iterations, int is_sync) {
-    pthread_t* pthread = NULL;
-    int i;
-    long double result = 0.0;
-    thread_arg arg;
-    arg.is_sync = is_sync;
-    arg.num_iterations = num_iterations;
-
-    pthreads = (pthread_t*)malloc(sizeof(pthread_t) * num_threads);
-    memeset(pthreads, 0x0, sizeof(pthread_t) * num_threads);
-
-    for (i = 0; i < num_threads; i++) {
-        pthread_create(&pthreads[i], NULL, access_sharedtree, &arg); // 예제 코드는 마지막 인자 보이드로 넘기고 함수 내에서 다시 형변환 하는데 굳이..?
-    }
-
-    // 원하는 개수 만큼의 스레드를 만들어줘서 이제 순서 맞춰야 함.
-    // 처음 만들어진 쓰레드부터 순서대로 시작하게 함.
-    for (int i = 0; i < num_threads; i++) {
-        pthread_join(pthreads[i], NULL);
-    }
-
-    // 스레드 개수, 반복 횟수, 경쟁상태였는지 아니었는지 전달해서 출력하자
-    print_result(num_threads, num_iterations, is_sync);
-
-    return 0; // 리턴 굳이 필요한가...싶다...
-
-}
 
