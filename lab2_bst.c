@@ -382,8 +382,6 @@ int lab2_node_remove_fg(lab2_tree* tree, int key) {
         }
     }
 
-    
-
     // nodeSide_is가 UNKNOWN이라는 것은 찾는 노드가 트리의 루트라는 것 의미. 가장 꼭대기 노드 삭제하고싶음!!
 
     // now는 자식이 없다..
