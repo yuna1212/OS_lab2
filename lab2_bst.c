@@ -19,12 +19,8 @@
 
 #include "lab2_sync_types.h"
 
-// 뮤텍스 초기화
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 
-// key value는 0부터 순서대로 줌.
-int key_value = 0;
 /*
  * TODO
  *  Implement funtction which traverse BST in in-order
@@ -85,6 +81,49 @@ lab2_node* lab2_node_create(int key) {
 * If it fails to insert a node, it returns -1.
 */
 int lab2_node_insert(lab2_tree* tree, lab2_node* new_node) {
+    if (tree == NULL || new_node == NULL){
+	    return -1;
+    }
+    
+    lab2_node* now = tree->root;
+    // If the tree is empty, new_node becomes root of the tree.
+    if (now == NULL) {
+        tree->root = new_node;
+        return 0;
+    }
+    while (1) {
+        if (new_node->key < now->key) {
+            if (now->left) {
+                now = now->left;
+            }
+            else {
+                now->left = new_node;
+                break;
+            }
+        }
+        else {
+            if (now->right) {
+                now = now->right;
+            }
+            else {
+                now->right = new_node;
+                break;
+            }
+        }
+    }
+    return 0;
+}
+
+/*
+ * TODO
+ *  Implement a function which insert nodes from the BST in fine-garined manner.
+ *
+ *  @param lab2_tree *tree      : bst which you need to insert new node in fine-grained manner.
+ *  @param lab2_node *new_node  : bst node which you need to insert.
+ *  @return                     : status (success or fail)
+ */
+int lab2_node_insert_fg(lab2_tree* tree, lab2_node* new_node) {
+    // You need to implement lab2_node_insert_fg function.
     lab2_node* now = tree->root;
 
     // If the tree is empty, new_node becomes root of the tree.
@@ -119,18 +158,6 @@ int lab2_node_insert(lab2_tree* tree, lab2_node* new_node) {
         }
     }
     return 0;
-}
-
-/*
- * TODO
- *  Implement a function which insert nodes from the BST in fine-garined manner.
- *
- *  @param lab2_tree *tree      : bst which you need to insert new node in fine-grained manner.
- *  @param lab2_node *new_node  : bst node which you need to insert.
- *  @return                     : status (success or fail)
- */
-int lab2_node_insert_fg(lab2_tree* tree, lab2_node* new_node) {
-    // You need to implement lab2_node_insert_fg function.
 }
 
 /*
@@ -356,5 +383,6 @@ void lab2_node_delete(lab2_node* node) {
     free(node);
     node = NULL;
 }
+
 
 
