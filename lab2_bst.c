@@ -411,6 +411,204 @@ int lab2_node_remove(lab2_tree* tree, int key) {
  */
 int lab2_node_remove_fg(lab2_tree* tree, int key) {
     // You need to implement lab2_node_remove_fg function.
+    int lab2_node_remove_fg(lab2_tree* tree, int key) {
+    // You need to implement lab2_node_remove_fg function.
+     // You need to implement lab2_node_remove_cg function.
+    typedef enum side_is {
+        UNKNOWN,
+        LEFT_CHILD,
+        RIGHT_CHILD
+    } sideis; // Ÿî¶² ³ëµå°¡ ºÎžðÀÇ ¿Àž¥ÂÊÀÎÁö, ¿ÞÂÊÀÎÁö Á€ÇÏ±â
+
+    pthread_mutex_lock(&tree->root->mutex);
+    lab2_node* now_node = tree->root; // ¹æ¹®ÇÏŽÂ ³ëµå
+    lab2_node* parent_node = NULL; // ¹æ¹®ÇÏŽÂ ³ëµåÀÇ ºÎžð ³ëµå
+    lab2_node* key_node; // »èÁŠÇÒ ³ëµå
+
+    sideis nownode_is = UNKNOWN;
+
+    // Å°°ª °¡Áö°íÀÖŽÂ ³ëµå Ã£±â: ¹Ýº¹¹® ³ª°¡žé nownodeŽÂ ÀÔ·ÂÅ°¿Í °°ÀºÅ° °¡ÁöŽÂ°Å.
+    // ¶ô °É°í Ã£°í °É°í Ã£°í....
+
+    while (now_node->key != key) {
+        if (now_node == NULL) {
+            printf("[Error]No node to delete..Nothing matches the node put by parameter.\n");
+            return LAB2_ERROR;
+        }
+
+        // Ã£ŽÂ°Ô Žõ Å©ŽÙžé ¿Àž¥ÂÊÀž·Î ÀÌµ¿
+        if (key > now_node->key) {
+            if (nownode_is != UNKNOWN)
+                pthread_mutex_unlock(&parent_node->mutex);
+            parent_node = now_node;
+            pthread_mutex_lock(&parent_node->right->mutex);
+            now_node = parent_node->right;
+            nownode_is = RIGHT_CHILD;
+        }
+        // Ã£ŽÂ °ªÀÌ Žõ ÀÛŽÙžé ¿ÞÂÊÀž·Î ÀÌµ¿
+        else if (key < now_node->key) {
+            if (nownode_is != UNKNOWN)
+                pthread_mutex_unlock(&parent_node->mutex);
+            parent_node = now_node;
+            pthread_mutex_lock(&parent_node->left->mutex);
+            now_node = parent_node->left;
+            nownode_is = LEFT_CHILD;
+        }
+    }
+
+
+
+    // nodeSide_is°¡ UNKNOWNÀÌ¶óŽÂ °ÍÀº Ã£ŽÂ ³ëµå°¡ Æ®ž®ÀÇ ·çÆ®¶óŽÂ °Í ÀÇ¹Ì. °¡Àå ²ÀŽë±â ³ëµå »èÁŠÇÏ°íœÍÀœ!!
+
+    // now³ëµåÀÇ ¹Ù·Î ŸÆ·¡ ÀÖŽÂ ÀÚœÄÀº ¹«Á¶°Ç ¶ô ÇØµÒ.
+    if (now_node->left != NULL)
+        pthread_mutex_lock(&now_node->left->mutex);
+    else if (now_node->right != NULL)
+        pthread_mutex_lock(&now_node->right->mutex);
+
+    // nowŽÂ ÀÚœÄÀÌ ŸøŽÙ..
+    if (now_node->left == NULL && now_node->right == NULL) {
+        switch (nownode_is) {
+        case LEFT_CHILD:
+            parent_node->left = NULL;
+            break;
+        case RIGHT_CHILD:
+            parent_node->right = NULL;
+            break;
+        case UNKNOWN:
+            tree->root = NULL;
+            break;
+        }
+    }
+
+    // nowŽÂ ÀÚœÄÀÌ ÇÏ³ª ÀÖŽÙ.
+    else if (now_node->left == NULL || now_node->right == NULL) {
+        sideis child_of_nownode_is;
+        switch (nownode_is) {
+        case LEFT_CHILD:
+            // nowÀÇ ¿ÞÂÊ ÀÚœÄÀÌ ÀÖŽÂ°ÍÀÌŽÙ
+            if (now_node->left != NULL) {
+                child_of_nownode_is = LEFT_CHILD;
+                parent_node->left = now_node->left;
+            }
+            // nowÀÇ ¿Àž¥ÂÊ ÀÚœÄÀÌ ÀÖŽÂ°ÍÀÌŽÙ
+            else if (now_node->right != NULL) {
+                child_of_nownode_is = RIGHT_CHILD;
+                parent_node->left = now_node->right;
+            }
+            break;
+
+        case RIGHT_CHILD:
+            // nowÀÇ ¿ÞÂÊ ÀÚœÄÀÌ ÀÖŽÂ°ÍÀÌŽÙ
+            if (now_node->left != NULL) {
+                child_of_nownode_is = LEFT_CHILD;
+                parent_node->right = now_node->left;
+            }
+            // nowÀÇ ¿Àž¥ÂÊ ÀÚœÄÀÌ ÀÖŽÂ°ÍÀÌŽÙ
+            else if (now_node->right != NULL) {
+                child_of_nownode_is = RIGHT_CHILD;
+                parent_node->right = now_node->right;
+            }
+            break;
+
+        case UNKNOWN:
+            // treeÀÇ ·çÆ®žŠ »èÁŠÇØŸßÇÏ¹Ç·Î tree->rootžŠ ŽÙÀœ ³ëµå·Î °¡ž®Å°°Ô ÇØŸßÇÔ.
+             // nowÀÇ ¿ÞÂÊ ÀÚœÄÀÌ ÀÖŽÂ°ÍÀÌŽÙ
+            if (now_node->left != NULL) {
+                child_of_nownode_is = LEFT_CHILD;
+                tree->root = now_node->left;
+            }
+            // nowÀÇ ¿Àž¥ÂÊ ÀÚœÄÀÌ ÀÖŽÂ°ÍÀÌŽÙ
+            else if (now_node->right != NULL) {
+                child_of_nownode_is = RIGHT_CHILD;
+                tree->root = now_node->right;
+            }
+            break;
+        }
+
+        // ŽÙ ³¡³µÀžŽÏ±î ¶ô Ç®ŸîÁÖ°í
+        if (child_of_nownode_is == LEFT_CHILD)
+            pthread_mutex_unlock(&now_node->left->mutex);
+        else if (child_of_nownode_is == RIGHT_CHILD)
+            pthread_mutex_lock(&now_node->right->mutex);
+    }
+
+    // nowŽÂ ÀÚœÄÀÌ µÑ ŽÙ ÀÖŽÙ
+    else if (now_node->left != NULL && now_node->right != NULL) {
+        lab2_node* rightTerminal_node; // nowÀÇ ¿ÞÂÊÀÇ °¡Àå ¿Àž¥ÂÊ ³ëµå
+        lab2_node* parent_terminal; // rightTerminal_nodeÀÇ ºÎžð.
+
+        // nowÀÇ ¿ÞÂÊÀÚœÄÀÇ °¡Àå ¿Àž¥ÂÊ ³ëµå Åœ»ö
+        pthread_mutex_lock(&now_node->left->mutex);
+        rightTerminal_node = now_node->left;
+        parent_terminal = now_node;
+        while (rightTerminal_node->right != NULL) {
+            pthread_mutex_lock(&rightTerminal_node->right->mutex);
+            if (parent_terminal != now_node)
+                pthread_mutex_unlock(&parent_terminal->mutex);
+            parent_terminal = rightTerminal_node;
+            rightTerminal_node = parent_terminal->right;
+        }
+
+        // ÀÌºÎºÐÀÌ Á» Çò°¥ž®±ä ÇØ..
+        switch (nownode_is) {
+        case LEFT_CHILD:
+            // ž»ŽÜ ³ëµå¿Í ±× ºÎžð ³ëµåžŠ ¿¬°á ²÷ŽÂŽÙ.
+            if (parent_terminal != now_node)
+                parent_terminal->right = NULL;
+            else
+                now_node->left = NULL;
+
+            // ž»ŽÜ³ëµåÀÇ ¿ÞÂÊÀÚœÄÀº ÀÖÀ»°æ¿ì ±×°Å ¿Å°ÜÁÜ.
+            if (rightTerminal_node->left != NULL)
+                parent_terminal->right = rightTerminal_node->left;
+
+            // ž»ŽÜ ³ëµåžŠ ÀÌµ¿ÇÑŽÙ.
+
+            parent_node->left = rightTerminal_node;
+            rightTerminal_node->right = now_node->right;
+            rightTerminal_node->left = now_node->left;
+            break;
+
+        case RIGHT_CHILD:
+            if (parent_terminal != now_node)
+                parent_terminal->right = NULL;
+            else
+                now_node->left = NULL;
+            if (rightTerminal_node->left != NULL)
+                parent_terminal->right = rightTerminal_node->left;
+            parent_node->right = rightTerminal_node;
+            rightTerminal_node->right = now_node->right;
+            rightTerminal_node->left = now_node->left;
+            break;
+
+        case UNKNOWN:
+            if (parent_terminal != now_node)
+                parent_terminal->right = NULL;
+            else
+                now_node->left = NULL;
+            if (rightTerminal_node->left != NULL)
+                parent_terminal->right = rightTerminal_node->left;
+            tree->root = rightTerminal_node;
+            rightTerminal_node->right = now_node->right;
+            rightTerminal_node->left = now_node->left;
+
+            break;
+        }
+        // ž»ŽÜ ³ëµå¿Í ±× ºÎžð ³ëµå ¶ô Ç®±â
+        pthread_mutex_unlock(&rightTerminal_node->mutex); // ¶ôÀ» ÇÏ°í °Ë»çÇØŸßÇÒ±î?
+        pthread_mutex_unlock(&parent_terminal->mutex);
+    }
+
+    // nownodežŠ ÇØÁŠÇÏ°í ºñ¿öÁÖ±â!
+    lab2_node_delete(now_node);
+
+    // ¶ô Ç®±â
+    // pthread_mutex_lock(&now_node->mutex)); // ÀÌ¹Ì ŸøŸîÁø ³ëµå¿¡ ¶ôÀ» ÇªŽÂ°Ô ¹«œŒ ÀÇ¹ÌŸß?
+    pthread_mutex_unlock(&parent_node->mutex);
+    pthread_mutex_unlock(&now_node->mutex);
+}
+
 }
 
 
@@ -424,6 +622,204 @@ int lab2_node_remove_fg(lab2_tree* tree, int key) {
  */
 int lab2_node_remove_cg(lab2_tree* tree, int key) {
     // You need to implement lab2_node_remove_cg function.
+    int lab2_node_remove_fg(lab2_tree* tree, int key) {
+    // You need to implement lab2_node_remove_fg function.
+     // You need to implement lab2_node_remove_cg function.
+    typedef enum side_is {
+        UNKNOWN,
+        LEFT_CHILD,
+        RIGHT_CHILD
+    } sideis; // Ÿî¶² ³ëµå°¡ ºÎžðÀÇ ¿Àž¥ÂÊÀÎÁö, ¿ÞÂÊÀÎÁö Á€ÇÏ±â
+
+    pthread_mutex_lock(&tree->root->mutex);
+    lab2_node* now_node = tree->root; // ¹æ¹®ÇÏŽÂ ³ëµå
+    lab2_node* parent_node = NULL; // ¹æ¹®ÇÏŽÂ ³ëµåÀÇ ºÎžð ³ëµå
+    lab2_node* key_node; // »èÁŠÇÒ ³ëµå
+
+    sideis nownode_is = UNKNOWN;
+
+    // Å°°ª °¡Áö°íÀÖŽÂ ³ëµå Ã£±â: ¹Ýº¹¹® ³ª°¡žé nownodeŽÂ ÀÔ·ÂÅ°¿Í °°ÀºÅ° °¡ÁöŽÂ°Å.
+    // ¶ô °É°í Ã£°í °É°í Ã£°í....
+
+    while (now_node->key != key) {
+        if (now_node == NULL) {
+            printf("[Error]No node to delete..Nothing matches the node put by parameter.\n");
+            return LAB2_ERROR;
+        }
+
+        // Ã£ŽÂ°Ô Žõ Å©ŽÙžé ¿Àž¥ÂÊÀž·Î ÀÌµ¿
+        if (key > now_node->key) {
+            if (nownode_is != UNKNOWN)
+                pthread_mutex_unlock(&parent_node->mutex);
+            parent_node = now_node;
+            pthread_mutex_lock(&parent_node->right->mutex);
+            now_node = parent_node->right;
+            nownode_is = RIGHT_CHILD;
+        }
+        // Ã£ŽÂ °ªÀÌ Žõ ÀÛŽÙžé ¿ÞÂÊÀž·Î ÀÌµ¿
+        else if (key < now_node->key) {
+            if (nownode_is != UNKNOWN)
+                pthread_mutex_unlock(&parent_node->mutex);
+            parent_node = now_node;
+            pthread_mutex_lock(&parent_node->left->mutex);
+            now_node = parent_node->left;
+            nownode_is = LEFT_CHILD;
+        }
+    }
+
+
+
+    // nodeSide_is°¡ UNKNOWNÀÌ¶óŽÂ °ÍÀº Ã£ŽÂ ³ëµå°¡ Æ®ž®ÀÇ ·çÆ®¶óŽÂ °Í ÀÇ¹Ì. °¡Àå ²ÀŽë±â ³ëµå »èÁŠÇÏ°íœÍÀœ!!
+
+    // now³ëµåÀÇ ¹Ù·Î ŸÆ·¡ ÀÖŽÂ ÀÚœÄÀº ¹«Á¶°Ç ¶ô ÇØµÒ.
+    if (now_node->left != NULL)
+        pthread_mutex_lock(&now_node->left->mutex);
+    else if (now_node->right != NULL)
+        pthread_mutex_lock(&now_node->right->mutex);
+
+    // nowŽÂ ÀÚœÄÀÌ ŸøŽÙ..
+    if (now_node->left == NULL && now_node->right == NULL) {
+        switch (nownode_is) {
+        case LEFT_CHILD:
+            parent_node->left = NULL;
+            break;
+        case RIGHT_CHILD:
+            parent_node->right = NULL;
+            break;
+        case UNKNOWN:
+            tree->root = NULL;
+            break;
+        }
+    }
+
+    // nowŽÂ ÀÚœÄÀÌ ÇÏ³ª ÀÖŽÙ.
+    else if (now_node->left == NULL || now_node->right == NULL) {
+        sideis child_of_nownode_is;
+        switch (nownode_is) {
+        case LEFT_CHILD:
+            // nowÀÇ ¿ÞÂÊ ÀÚœÄÀÌ ÀÖŽÂ°ÍÀÌŽÙ
+            if (now_node->left != NULL) {
+                child_of_nownode_is = LEFT_CHILD;
+                parent_node->left = now_node->left;
+            }
+            // nowÀÇ ¿Àž¥ÂÊ ÀÚœÄÀÌ ÀÖŽÂ°ÍÀÌŽÙ
+            else if (now_node->right != NULL) {
+                child_of_nownode_is = RIGHT_CHILD;
+                parent_node->left = now_node->right;
+            }
+            break;
+
+        case RIGHT_CHILD:
+            // nowÀÇ ¿ÞÂÊ ÀÚœÄÀÌ ÀÖŽÂ°ÍÀÌŽÙ
+            if (now_node->left != NULL) {
+                child_of_nownode_is = LEFT_CHILD;
+                parent_node->right = now_node->left;
+            }
+            // nowÀÇ ¿Àž¥ÂÊ ÀÚœÄÀÌ ÀÖŽÂ°ÍÀÌŽÙ
+            else if (now_node->right != NULL) {
+                child_of_nownode_is = RIGHT_CHILD;
+                parent_node->right = now_node->right;
+            }
+            break;
+
+        case UNKNOWN:
+            // treeÀÇ ·çÆ®žŠ »èÁŠÇØŸßÇÏ¹Ç·Î tree->rootžŠ ŽÙÀœ ³ëµå·Î °¡ž®Å°°Ô ÇØŸßÇÔ.
+             // nowÀÇ ¿ÞÂÊ ÀÚœÄÀÌ ÀÖŽÂ°ÍÀÌŽÙ
+            if (now_node->left != NULL) {
+                child_of_nownode_is = LEFT_CHILD;
+                tree->root = now_node->left;
+            }
+            // nowÀÇ ¿Àž¥ÂÊ ÀÚœÄÀÌ ÀÖŽÂ°ÍÀÌŽÙ
+            else if (now_node->right != NULL) {
+                child_of_nownode_is = RIGHT_CHILD;
+                tree->root = now_node->right;
+            }
+            break;
+        }
+
+        // ŽÙ ³¡³µÀžŽÏ±î ¶ô Ç®ŸîÁÖ°í
+        if (child_of_nownode_is == LEFT_CHILD)
+            pthread_mutex_unlock(&now_node->left->mutex);
+        else if (child_of_nownode_is == RIGHT_CHILD)
+            pthread_mutex_lock(&now_node->right->mutex);
+    }
+
+    // nowŽÂ ÀÚœÄÀÌ µÑ ŽÙ ÀÖŽÙ
+    else if (now_node->left != NULL && now_node->right != NULL) {
+        lab2_node* rightTerminal_node; // nowÀÇ ¿ÞÂÊÀÇ °¡Àå ¿Àž¥ÂÊ ³ëµå
+        lab2_node* parent_terminal; // rightTerminal_nodeÀÇ ºÎžð.
+
+        // nowÀÇ ¿ÞÂÊÀÚœÄÀÇ °¡Àå ¿Àž¥ÂÊ ³ëµå Åœ»ö
+        pthread_mutex_lock(&now_node->left->mutex);
+        rightTerminal_node = now_node->left;
+        parent_terminal = now_node;
+        while (rightTerminal_node->right != NULL) {
+            pthread_mutex_lock(&rightTerminal_node->right->mutex);
+            if (parent_terminal != now_node)
+                pthread_mutex_unlock(&parent_terminal->mutex);
+            parent_terminal = rightTerminal_node;
+            rightTerminal_node = parent_terminal->right;
+        }
+
+        // ÀÌºÎºÐÀÌ Á» Çò°¥ž®±ä ÇØ..
+        switch (nownode_is) {
+        case LEFT_CHILD:
+            // ž»ŽÜ ³ëµå¿Í ±× ºÎžð ³ëµåžŠ ¿¬°á ²÷ŽÂŽÙ.
+            if (parent_terminal != now_node)
+                parent_terminal->right = NULL;
+            else
+                now_node->left = NULL;
+
+            // ž»ŽÜ³ëµåÀÇ ¿ÞÂÊÀÚœÄÀº ÀÖÀ»°æ¿ì ±×°Å ¿Å°ÜÁÜ.
+            if (rightTerminal_node->left != NULL)
+                parent_terminal->right = rightTerminal_node->left;
+
+            // ž»ŽÜ ³ëµåžŠ ÀÌµ¿ÇÑŽÙ.
+
+            parent_node->left = rightTerminal_node;
+            rightTerminal_node->right = now_node->right;
+            rightTerminal_node->left = now_node->left;
+            break;
+
+        case RIGHT_CHILD:
+            if (parent_terminal != now_node)
+                parent_terminal->right = NULL;
+            else
+                now_node->left = NULL;
+            if (rightTerminal_node->left != NULL)
+                parent_terminal->right = rightTerminal_node->left;
+            parent_node->right = rightTerminal_node;
+            rightTerminal_node->right = now_node->right;
+            rightTerminal_node->left = now_node->left;
+            break;
+
+        case UNKNOWN:
+            if (parent_terminal != now_node)
+                parent_terminal->right = NULL;
+            else
+                now_node->left = NULL;
+            if (rightTerminal_node->left != NULL)
+                parent_terminal->right = rightTerminal_node->left;
+            tree->root = rightTerminal_node;
+            rightTerminal_node->right = now_node->right;
+            rightTerminal_node->left = now_node->left;
+
+            break;
+        }
+        // ž»ŽÜ ³ëµå¿Í ±× ºÎžð ³ëµå ¶ô Ç®±â
+        pthread_mutex_unlock(&rightTerminal_node->mutex); // ¶ôÀ» ÇÏ°í °Ë»çÇØŸßÇÒ±î?
+        pthread_mutex_unlock(&parent_terminal->mutex);
+    }
+
+    // nownodežŠ ÇØÁŠÇÏ°í ºñ¿öÁÖ±â!
+    lab2_node_delete(now_node);
+
+    // ¶ô Ç®±â
+    // pthread_mutex_lock(&now_node->mutex)); // ÀÌ¹Ì ŸøŸîÁø ³ëµå¿¡ ¶ôÀ» ÇªŽÂ°Ô ¹«œŒ ÀÇ¹ÌŸß?
+    pthread_mutex_unlock(&parent_node->mutex);
+    pthread_mutex_unlock(&now_node->mutex);
+}
+
 }
 
 
