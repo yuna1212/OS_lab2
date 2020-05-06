@@ -25,6 +25,7 @@
 #define LAB2_TYPE_FINEGRAINED       0
 #define LAB2_TYPE_COARSEGRAINED     1
 #define LAB2_TYPE_SINGLE            2
+#define LAB2_TYPE_NONLOCKED         3
 
 #define LAB2_OPTYPE_INSERT          0
 #define LAB2_OPTYPE_DELETE          1
@@ -44,7 +45,7 @@ void lab2_sync_example(char *cmd)
 }
 
 static void print_result(lab2_tree *tree,int num_threads,int node_count ,int is_sync, int op_type ,double time){
-    char *cond[] = {"fine-grained BST  ", "coarse-grained BST", "single thread BST"};
+    char *cond[] = {"fine-grained BST  ", "coarse-grained BST", "single thread BST", "non locked BST"};
     char *op[] = {"insert","delete"};
     int result_count=0;
     int num=0;
@@ -94,6 +95,9 @@ void* thread_job_insert(void *arg){
             lab2_node_insert_fg(tree, node);
         else if(is_sync == LAB2_TYPE_COARSEGRAINED)
             lab2_node_insert_cg(tree, node);
+	else if(is_sync == LAB2_TYPE_NONLOCKED){
+	    lab2_node_insert(tree, node);
+	}
     }
 }
 
@@ -191,10 +195,11 @@ void bst_test(int num_threads,int node_count){
     exe_time = get_timeval(&tv_insert_start, &tv_insert_end);
     print_result(tree,num_threads, node_count, is_sync, LAB2_OPTYPE_INSERT,exe_time);
     lab2_tree_delete(tree);
-    */
-    /* 
+   */
+
+    /*
      * single thread delete test
-     */
+    */
     
 
     tree = lab2_tree_create();
@@ -212,7 +217,36 @@ void bst_test(int num_threads,int node_count){
     exe_time = get_timeval(&tv_start, &tv_end);
     print_result(tree ,num_threads, node_count, LAB2_TYPE_SINGLE, LAB2_OPTYPE_DELETE,exe_time);
     lab2_tree_delete(tree);
-    
+ 
+
+/*
+ * multi thread non locked test 
+ */
+
+    is_sync = LAB2_TYPE_NONLOCKED;
+    tree = lab2_tree_create();
+
+    gettimeofday(&tv_insert_start, NULL);
+    for(i=0; i < num_threads ; i++){
+        thread_arg *th_arg = &threads[i];
+        th_arg->tree = tree;
+        th_arg->is_sync = is_sync;
+        th_arg->data_set = data;
+        th_arg->start = i*term;
+        th_arg->end = (i+1)*term;
+
+        pthread_create(&threads[i].thread,NULL,thread_job_insert,(void*)th_arg);
+    }
+
+    for (i = 0; i < num_threads; i++)
+        pthread_join(threads[i].thread, NULL);
+
+    gettimeofday(&tv_insert_end, NULL);
+    exe_time = get_timeval(&tv_insert_start, &tv_insert_end);
+    print_result(tree,num_threads, node_count, is_sync,LAB2_OPTYPE_INSERT ,exe_time);
+    lab2_tree_delete(tree);
+
+
     /* 
      * multi thread delete test coarse-grained  
      */

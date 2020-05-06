@@ -135,12 +135,13 @@ int lab2_node_insert_fg(lab2_tree* tree, lab2_node* new_node) {
     }
 
     lab2_node* now = tree->root;
-    // If the tree is empty, new_node becomes root of the tree.
+ // If the tree is empty, new_node becomes root of the tree.
     if (now == NULL) {
 	pthread_mutex_lock(&tree->lock);
         tree->root = new_node;
+
 	pthread_mutex_unlock(&tree->lock);
-        return 0;
+	return 0;
     }
     while (1) {
         if (new_node->key <= now->key) {
@@ -148,9 +149,9 @@ int lab2_node_insert_fg(lab2_tree* tree, lab2_node* new_node) {
                 now = now->left;
             }
             else {
-		pthread_mutex_lock(&(now->mutex));
+		pthread_mutex_lock(&now->mutex);
                 now->left = new_node;
-                pthread_mutex_unlock(&(now->mutex)); 
+                pthread_mutex_unlock(&now->mutex); 
                 break;
             }
         }
@@ -159,9 +160,9 @@ int lab2_node_insert_fg(lab2_tree* tree, lab2_node* new_node) {
                 now = now->right;
             }
             else {
-		pthread_mutex_lock(&(now->mutex));
+		pthread_mutex_lock(&now->mutex);
                 now->right = new_node;
-		pthread_mutex_unlock(&(now->mutex));
+		pthread_mutex_unlock(&now->mutex);
                 break;
             }
         }
@@ -434,16 +435,17 @@ int lab2_node_remove_cg(lab2_tree* tree, int key) {
  *  @param lab2_tree *tree  : bst which you want to delete.
  *  @return                 : status(success or fail)
  */
+
 void lab2_tree_delete(lab2_tree* tree) {
 
     if (tree->root != NULL) {
-        int key = tree->root->key;
-        lab2_node_remove(tree, key);
+        lab2_node_remove(tree, tree->root->key);
         lab2_tree_delete(tree);
     }
     else
         return;
 }
+
 
 
 /*
