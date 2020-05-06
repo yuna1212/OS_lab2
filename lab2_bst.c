@@ -52,6 +52,7 @@ int lab2_node_print_inorder(lab2_tree* tree, int num) {
         return num;
 }
 
+
 /*
 * Create empty Binary Search Tree.
 * Return the created Binary Search Tree.
@@ -59,6 +60,7 @@ int lab2_node_print_inorder(lab2_tree* tree, int num) {
 lab2_tree* lab2_tree_create() {
     lab2_tree* tree = (lab2_tree*)malloc(sizeof(lab2_tree));
     tree->root = NULL;
+    pthread_mutex_init(&tree->lock, NULL);
     return tree;
 }
 
@@ -72,6 +74,7 @@ lab2_node* lab2_node_create(int key) {
     node->key = key;
     node->left = NULL;
     node->right = NULL;
+    pthread_mutex_init(&node->mutex, NULL);
     return node;
 }
 
@@ -92,7 +95,11 @@ int lab2_node_insert(lab2_tree* tree, lab2_node* new_node) {
         return 0;
     }
     while (1) {
-        if (new_node->key < now->key) {
+	//if (new_node->key == now->key){
+		//printf("duplicate key..\n");
+	//	return -1;
+	//}
+        if (new_node->key <= now->key) {
             if (now->left) {
                 now = now->left;
             }
@@ -123,27 +130,28 @@ int lab2_node_insert(lab2_tree* tree, lab2_node* new_node) {
  *  @return                     : status (success or fail)
  */
 int lab2_node_insert_fg(lab2_tree* tree, lab2_node* new_node) {
-    // You need to implement lab2_node_insert_fg function.
-    lab2_node* now = tree->root;
+    if (tree == NULL || new_node == NULL){
+            return -1;
+    }
 
-    // If the tree is empty, new_node becomes root of the tree.
+    lab2_node* now = tree->root;
+ // If the tree is empty, new_node becomes root of the tree.
     if (now == NULL) {
+	pthread_mutex_lock(&tree->lock);
         tree->root = new_node;
-        return 0;
+
+	pthread_mutex_unlock(&tree->lock);
+	return 0;
     }
     while (1) {
-        // It isn't possible to insert node that has duplicate key value.
-        if (new_node->key == now->key) {
-            printf("Duplicate key value...\n");
-            return -1;
-        }
-
-        if (new_node->key < now->key) {
+        if (new_node->key <= now->key) {
             if (now->left) {
                 now = now->left;
             }
             else {
+		pthread_mutex_lock(&now->mutex);
                 now->left = new_node;
+                pthread_mutex_unlock(&now->mutex); 
                 break;
             }
         }
@@ -152,13 +160,16 @@ int lab2_node_insert_fg(lab2_tree* tree, lab2_node* new_node) {
                 now = now->right;
             }
             else {
+		pthread_mutex_lock(&now->mutex);
                 now->right = new_node;
+		pthread_mutex_unlock(&now->mutex);
                 break;
             }
         }
     }
     return 0;
 }
+
 
 /*
  * TODO
@@ -169,8 +180,42 @@ int lab2_node_insert_fg(lab2_tree* tree, lab2_node* new_node) {
  *  @return                     : status (success or fail)
  */
 int lab2_node_insert_cg(lab2_tree* tree, lab2_node* new_node) {
-    // You need to implement lab2_node_insert_cg function.
+    if (tree == NULL || new_node == NULL){
+            return -1;
+    }
+
+    lab2_node* now = tree->root;
+    // If the tree is empty, new_node becomes root of the tree.
+    pthread_mutex_lock(&tree->lock);
+    if (now == NULL) {
+        tree->root = new_node;
+    }
+    else {
+        while (1) {
+            if (new_node->key <= now->key) {
+                if (now->left) {
+                    now = now->left;
+                }
+                else {
+                    now->left = new_node;
+                    break;
+                }
+            }
+            else {
+                if (now->right) {
+                    now = now->right;
+                }
+                else {
+                    now->right = new_node;
+                    break;
+                }
+            }
+        }
+    }
+    pthread_mutex_unlock(&tree->lock);
+    return 0;
 }
+
 
 /*
  * TODO
@@ -180,42 +225,43 @@ int lab2_node_insert_cg(lab2_tree* tree, lab2_node* new_node) {
  *  @param int key          : key value that you want to delete.
  *  @return                 : status (success or fail)
  */
+
 int lab2_node_remove(lab2_tree* tree, int key) {
     typedef enum side_is {
         UNKNOWN,
         LEFT_CHILD,
         RIGHT_CHILD
-    } sideis; // ¾î¶² ³ëµå°¡ ºÎ¸ðÀÇ ¿À¸¥ÂÊÀÎÁö, ¿ÞÂÊÀÎÁö Á¤ÇÏ±â
+    } sideis; // Å¸Ã®Â¶Â² Â³Ã«ÂµÃ¥Â°Â¡ ÂºÃŽÅ¾Ã°Ã€Ã‡ Â¿Ã€Å¾Â¥Ã‚ÃŠÃ€ÃŽÃÃ¶, Â¿ÃžÃ‚ÃŠÃ€ÃŽÃÃ¶ Ãâ‚¬Ã‡ÃÂ±Ã¢
 
-    lab2_node* now_node = tree->root; // ¹æ¹®ÇÏ´Â ³ëµå
-    lab2_node* parent_node = NULL; // ¹æ¹®ÇÏ´Â ³ëµåÀÇ ºÎ¸ð ³ëµå
-    lab2_node* key_node; // »èÁ¦ÇÒ ³ëµå
+    lab2_node* now_node = tree->root; // Â¹Ã¦Â¹Â®Ã‡ÃÅ½Ã‚ Â³Ã«ÂµÃ¥
+    lab2_node* parent_node = NULL; // Â¹Ã¦Â¹Â®Ã‡ÃÅ½Ã‚ Â³Ã«ÂµÃ¥Ã€Ã‡ ÂºÃŽÅ¾Ã° Â³Ã«ÂµÃ¥
+    lab2_node* key_node; // Â»Ã¨ÃÅ Ã‡Ã’ Â³Ã«ÂµÃ¥
 
     sideis nownode_is = UNKNOWN;
 
-    // Å°°ª °¡Áö°íÀÖ´Â ³ëµå Ã£±â: ¹Ýº¹¹® ³ª°¡¸é nownode´Â ÀÔ·ÂÅ°¿Í °°ÀºÅ° °¡Áö´Â°Å.
+    // Ã…Â°Â°Âª Â°Â¡ÃÃ¶Â°Ã­Ã€Ã–Å½Ã‚ Â³Ã«ÂµÃ¥ ÃƒÂ£Â±Ã¢: Â¹ÃÂºÂ¹Â¹Â® Â³ÂªÂ°Â¡Å¾Ã© nownodeÅ½Ã‚ Ã€Ã”Â·Ã‚Ã…Â°Â¿Ã Â°Â°Ã€ÂºÃ…Â° Â°Â¡ÃÃ¶Å½Ã‚Â°Ã….
     while (now_node->key != key) {
         if (now_node == NULL) {
             printf("[Error]No node to delete..Nothing matches the node put by parameter.\n");
-            return LAB2_FAIL;
+            return LAB2_ERROR;
         }
 
-        // Ã£´Â°Ô ´õ Å©´Ù¸é ¿À¸¥ÂÊÀ¸·Î ÀÌµ¿
+        // ÃƒÂ£Å½Ã‚Â°Ã” Å½Ãµ Ã…Â©Å½Ã™Å¾Ã© Â¿Ã€Å¾Â¥Ã‚ÃŠÃ€Å¾Â·ÃŽ Ã€ÃŒÂµÂ¿
         if (key > now_node->key) {
             parent_node = now_node;
             now_node = parent_node->right;
             nownode_is = RIGHT_CHILD;
         }
-        // Ã£´Â °ªÀÌ ´õ ÀÛ´Ù¸é ¿ÞÂÊÀ¸·Î ÀÌµ¿
+        // ÃƒÂ£Å½Ã‚ Â°ÂªÃ€ÃŒ Å½Ãµ Ã€Ã›Å½Ã™Å¾Ã© Â¿ÃžÃ‚ÃŠÃ€Å¾Â·ÃŽ Ã€ÃŒÂµÂ¿
         else if (key < now_node->key) {
             parent_node = now_node;
             now_node = parent_node->left;
             nownode_is = LEFT_CHILD;
         }
     }
-    // nodeSide_is°¡ UNKNOWNÀÌ¶ó´Â °ÍÀº Ã£´Â ³ëµå°¡ Æ®¸®ÀÇ ·çÆ®¶ó´Â °Í ÀÇ¹Ì. °¡Àå ²À´ë±â ³ëµå »èÁ¦ÇÏ°í½ÍÀ½!!
+    // nodeSide_isÂ°Â¡ UNKNOWNÃ€ÃŒÂ¶Ã³Å½Ã‚ Â°ÃÃ€Âº ÃƒÂ£Å½Ã‚ Â³Ã«ÂµÃ¥Â°Â¡ Ã†Â®Å¾Â®Ã€Ã‡ Â·Ã§Ã†Â®Â¶Ã³Å½Ã‚ Â°Ã Ã€Ã‡Â¹ÃŒ. Â°Â¡Ã€Ã¥ Â²Ã€Å½Ã«Â±Ã¢ Â³Ã«ÂµÃ¥ Â»Ã¨ÃÅ Ã‡ÃÂ°Ã­Å“ÃÃ€Å“!!
 
-    // now´Â ÀÚ½ÄÀÌ ¾ø´Ù..
+    // nowÅ½Ã‚ Ã€ÃšÅ“Ã„Ã€ÃŒ Å¸Ã¸Å½Ã™..
     if (now_node->left == NULL && now_node->right == NULL) {
         switch (nownode_is) {
         case LEFT_CHILD:
@@ -230,50 +276,50 @@ int lab2_node_remove(lab2_tree* tree, int key) {
         }
     }
 
-    // now´Â ÀÚ½ÄÀÌ ÇÏ³ª ÀÖ´Ù.
+    // nowÅ½Ã‚ Ã€ÃšÅ“Ã„Ã€ÃŒ Ã‡ÃÂ³Âª Ã€Ã–Å½Ã™.
     else if (now_node->left == NULL || now_node->right == NULL) {
         switch (nownode_is) {
         case LEFT_CHILD:
-            // nowÀÇ ¿ÞÂÊ ÀÚ½ÄÀÌ ÀÖ´Â°ÍÀÌ´Ù
+            // nowÃ€Ã‡ Â¿ÃžÃ‚ÃŠ Ã€ÃšÅ“Ã„Ã€ÃŒ Ã€Ã–Å½Ã‚Â°ÃÃ€ÃŒÅ½Ã™
             if (now_node->left != NULL) {
                 parent_node->left = now_node->left;
             }
-            // nowÀÇ ¿À¸¥ÂÊ ÀÚ½ÄÀÌ ÀÖ´Â°ÍÀÌ´Ù
+            // nowÃ€Ã‡ Â¿Ã€Å¾Â¥Ã‚ÃŠ Ã€ÃšÅ“Ã„Ã€ÃŒ Ã€Ã–Å½Ã‚Â°ÃÃ€ÃŒÅ½Ã™
             else if (now_node->right != NULL) {
                 parent_node->left = now_node->right;
             }
             break;
 
         case RIGHT_CHILD:
-            // nowÀÇ ¿ÞÂÊ ÀÚ½ÄÀÌ ÀÖ´Â°ÍÀÌ´Ù
+            // nowÃ€Ã‡ Â¿ÃžÃ‚ÃŠ Ã€ÃšÅ“Ã„Ã€ÃŒ Ã€Ã–Å½Ã‚Â°ÃÃ€ÃŒÅ½Ã™
             if (now_node->left != NULL) {
                 parent_node->right = now_node->left;
             }
-            // nowÀÇ ¿À¸¥ÂÊ ÀÚ½ÄÀÌ ÀÖ´Â°ÍÀÌ´Ù
+            // nowÃ€Ã‡ Â¿Ã€Å¾Â¥Ã‚ÃŠ Ã€ÃšÅ“Ã„Ã€ÃŒ Ã€Ã–Å½Ã‚Â°ÃÃ€ÃŒÅ½Ã™
             else if (now_node->right != NULL) {
                 parent_node->right = now_node->right;
             }
             break;
 
         case UNKNOWN:
-            // treeÀÇ ·çÆ®¸¦ »èÁ¦ÇØ¾ßÇÏ¹Ç·Î tree->root¸¦ ´ÙÀ½ ³ëµå·Î °¡¸®Å°°Ô ÇØ¾ßÇÔ.
-             // nowÀÇ ¿ÞÂÊ ÀÚ½ÄÀÌ ÀÖ´Â°ÍÀÌ´Ù
+            // treeÃ€Ã‡ Â·Ã§Ã†Â®Å¾Å  Â»Ã¨ÃÅ Ã‡Ã˜Å¸ÃŸÃ‡ÃÂ¹Ã‡Â·ÃŽ tree->rootÅ¾Å  Å½Ã™Ã€Å“ Â³Ã«ÂµÃ¥Â·ÃŽ Â°Â¡Å¾Â®Ã…Â°Â°Ã” Ã‡Ã˜Å¸ÃŸÃ‡Ã”.
+             // nowÃ€Ã‡ Â¿ÃžÃ‚ÃŠ Ã€ÃšÅ“Ã„Ã€ÃŒ Ã€Ã–Å½Ã‚Â°ÃÃ€ÃŒÅ½Ã™
             if (now_node->left != NULL) {
                 tree->root = now_node->left;
             }
-            // nowÀÇ ¿À¸¥ÂÊ ÀÚ½ÄÀÌ ÀÖ´Â°ÍÀÌ´Ù
+            // nowÃ€Ã‡ Â¿Ã€Å¾Â¥Ã‚ÃŠ Ã€ÃšÅ“Ã„Ã€ÃŒ Ã€Ã–Å½Ã‚Â°ÃÃ€ÃŒÅ½Ã™
             else if (now_node->right != NULL) {
                 tree->root = now_node->right;
             }
             break;
         }
     }
-    // now´Â ÀÚ½ÄÀÌ µÑ ´Ù ÀÖ´Ù
+    // nowÅ½Ã‚ Ã€ÃšÅ“Ã„Ã€ÃŒ ÂµÃ‘ Å½Ã™ Ã€Ã–Å½Ã™
     else if (now_node->left != NULL && now_node->right != NULL) {
-        lab2_node* rightTerminal_node; // nowÀÇ ¿ÞÂÊÀÇ °¡Àå ¿À¸¥ÂÊ ³ëµå
-        lab2_node* parent_terminal; // rightTerminal_nodeÀÇ ºÎ¸ð.
+        lab2_node* rightTerminal_node; // nowÃ€Ã‡ Â¿ÃžÃ‚ÃŠÃ€Ã‡ Â°Â¡Ã€Ã¥ Â¿Ã€Å¾Â¥Ã‚ÃŠ Â³Ã«ÂµÃ¥
+        lab2_node* parent_terminal; // rightTerminal_nodeÃ€Ã‡ ÂºÃŽÅ¾Ã°.
 
-        // nowÀÇ ¿ÞÂÊÀÚ½ÄÀÇ °¡Àå ¿À¸¥ÂÊ ³ëµå Å½»ö
+        // nowÃ€Ã‡ Â¿ÃžÃ‚ÃŠÃ€ÃšÅ“Ã„Ã€Ã‡ Â°Â¡Ã€Ã¥ Â¿Ã€Å¾Â¥Ã‚ÃŠ Â³Ã«ÂµÃ¥ Ã…Å“Â»Ã¶
         rightTerminal_node = now_node->left;
         parent_terminal = now_node;
         while (rightTerminal_node->right != NULL) {
@@ -281,48 +327,78 @@ int lab2_node_remove(lab2_tree* tree, int key) {
             rightTerminal_node = parent_terminal->right;
         }
 
-        // ÀÌºÎºÐÀÌ Á» Çò°¥¸®±ä ÇØ..
+        // Ã€ÃŒÂºÃŽÂºÃÃ€ÃŒ ÃÂ» Ã‡Ã²Â°Â¥Å¾Â®Â±Ã¤ Ã‡Ã˜..
         switch (nownode_is) {
         case LEFT_CHILD:
-            // ¸»´Ü ³ëµå¿Í ±× ºÎ¸ð ³ëµå¸¦ ¿¬°á ²÷´Â´Ù.
-            if (parent_terminal != now_node)
+            // Å¾Â»Å½Ãœ Â³Ã«ÂµÃ¥Â¿Ã Â±Ã— ÂºÃŽÅ¾Ã° Â³Ã«ÂµÃ¥Å¾Å  Â¿Â¬Â°Ã¡ Â²Ã·Å½Ã‚Å½Ã™.
+            if (parent_terminal != now_node) {
                 parent_terminal->right = NULL;
-            else
+
+                if (rightTerminal_node->left != NULL) {
+                    parent_terminal->right = rightTerminal_node->left;
+                }
+            } 
+            else {
                 now_node->left = NULL;
-            // ¸»´Ü ³ëµå¸¦ ÀÌµ¿ÇÑ´Ù.
+                if (rightTerminal_node->left != NULL) {
+                    parent_terminal->left = rightTerminal_node->left;
+                }
+            }    
+            // Å¾Â»Å½Ãœ Â³Ã«ÂµÃ¥Å¾Å  Ã€ÃŒÂµÂ¿Ã‡Ã‘Å½Ã™.
+
             parent_node->left = rightTerminal_node;
             rightTerminal_node->right = now_node->right;
             rightTerminal_node->left = now_node->left;
             break;
 
         case RIGHT_CHILD:
-            if (parent_terminal != now_node)
+            if (parent_terminal != now_node) {
                 parent_terminal->right = NULL;
-            else
-                now_node->left = NULL;
 
-            parent_node->right = rightTerminal_node;
+                if (rightTerminal_node->left != NULL) {
+                    parent_terminal->right = rightTerminal_node->left;
+                }
+            }
+            else {
+                now_node->left = NULL;
+                if (rightTerminal_node->left != NULL) {
+                    parent_terminal->left = rightTerminal_node->left;
+                }
+            }
+            
+	    parent_node->right = rightTerminal_node;
             rightTerminal_node->right = now_node->right;
             rightTerminal_node->left = now_node->left;
             break;
 
         case UNKNOWN:
-            if (parent_terminal != now_node)
+            if (parent_terminal != now_node) {
                 parent_terminal->right = NULL;
-            else
+
+                if (rightTerminal_node->left != NULL) {
+                    parent_terminal->right = rightTerminal_node->left;
+                }
+            }
+            else {
                 now_node->left = NULL;
-            tree->root = rightTerminal_node;
+                if (rightTerminal_node->left != NULL) {
+                    parent_terminal->left = rightTerminal_node->left;
+                }
+            }
+
+	    tree->root = rightTerminal_node;
             rightTerminal_node->right = now_node->right;
             rightTerminal_node->left = now_node->left;
-            
+
             break;
         }
-        
-    }
 
-    // nownode¸¦ ÇØÁ¦ÇÏ°í ºñ¿öÁÖ±â!
+    }
+    // nownodeÅ¾Å  Ã‡Ã˜ÃÅ Ã‡ÃÂ°Ã­ ÂºÃ±Â¿Ã¶ÃÃ–Â±Ã¢!
     lab2_node_delete(now_node);
 }
+
+
 
 
 /*
@@ -359,16 +435,18 @@ int lab2_node_remove_cg(lab2_tree* tree, int key) {
  *  @param lab2_tree *tree  : bst which you want to delete.
  *  @return                 : status(success or fail)
  */
+
 void lab2_tree_delete(lab2_tree* tree) {
 
     if (tree->root != NULL) {
-        int key = tree->root->key;
-        lab2_node_remove(tree, key);
+        lab2_node_remove(tree, tree->root->key);
         lab2_tree_delete(tree);
     }
     else
         return;
 }
+
+
 
 /*
  * TODO
@@ -378,10 +456,11 @@ void lab2_tree_delete(lab2_tree* tree) {
  *  @param lab2_tree *tree  : bst node which you want to remove.
  *  @return                 : status(success or fail)
  */
+
+
 void lab2_node_delete(lab2_node* node) {
     free(node);
     node = NULL;
 }
-
 
 
